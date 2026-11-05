@@ -221,10 +221,6 @@ class _ProdukListPageState extends State<ProdukListPage> {
   }
 
   Widget _buildActionButton(Product p) {
-    // Sesuai aturan PRD BR-01..BR-03:
-    // tersedia=false -> tidak boleh dibeli
-    // preOrder=true -> tetap boleh dibeli walau stok=0
-    // non-preOrder & stok=0 -> stok habis, tidak boleh dibeli
     final bool canBuy = p.tersedia && (p.preOrder || p.stok > 0);
 
     if (!canBuy) {
@@ -583,43 +579,716 @@ class _ProdukListPageState extends State<ProdukListPage> {
 }
 
 // ---------------------------------------------------------------------------
-// Product detail page (placeholder)
+// Halaman Detail Produk (ProdukDetailPage)
+// Mengambil data real-time via GET /api/produk/{id}
 // ---------------------------------------------------------------------------
-class ProdukDetailPage extends StatelessWidget {
+class ProdukDetailPage extends StatefulWidget {
   final Product produk;
   const ProdukDetailPage({required this.produk, super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(produk.nama)),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(produk.nama,
-                style: const TextStyle(
-                    fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text('Kategori: ${produk.kategori}'),
-            Text('Harga: ${_formatRupiah(produk.harga)}'),
-            Text('Stok: ${produk.stok}'),
-            if (produk.deskripsi != null) ...[
-              const SizedBox(height: 8),
-              Text(produk.deskripsi!),
-            ],
-            if (produk.hargaGrosir.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              const Text('Harga Grosir:',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              ...produk.hargaGrosir.map(
-                (tier) => Text(
-                    '  ≥ ${tier.minKuantitas} pcs → ${_formatRupiah(tier.hargaSatuan)}/pcs'),
+  State<ProdukDetailPage> createState() => _ProdukDetailPageState();
+}
+
+class _ProdukDetailPageState extends State<ProdukDetailPage> {
+  final LayananApi _api = LayananApi();
+  late Future<Product> _futureDetail;
+  int _jumlah = 1;
+  bool _isAddingToCart = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _futureDetail = _api.fetchProdukDetail(widget.produk.id);
+  }
+
+  void _reload() {
+    setState(() {
+      _futureDetail = _api.fetchProdukDetail(widget.produk.id);
+    });
+  }
+
+  /// Menghitung harga satuan efektif berdasarkan kuantitas stepper
+  int _hitungHargaSatuan(Product p, int qty) {
+    if (p.hargaGrosir.isEmpty) return p.harga;
+    final tiers =
+        p.hargaGrosir.where((tier) => tier.minKuantitas <= qty).toList();
+    if (tiers.isEmpty) return p.harga;
+    tiers.sort((a, b) => b.minKuantitas.compareTo(a.minKuantitas));
+    return tiers.first.hargaSatuan;
+  }
+
+  /// Kirim penambahan item ke server melalui POST /api/keranjang
+  Future<void> _tambahKeKeranjang(Product product) async {
+    if (_isAddingToCart) return;
+
+    setState(() {
+      _isAddingToCart = true;
+    });
+
+    try {
+      await _api.addKeranjang(
+        produkId: product.id,
+        jumlah: _jumlah,
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_outline,
+                  color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '$_jumlah unit "${product.nama}" berhasil dimasukkan ke keranjang.',
+                ),
               ),
             ],
-          ],
+          ),
+          backgroundColor: const Color(0xFF2E9E5B),
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
         ),
+      );
+    } on ConflictException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded,
+                  color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(child: Text(e.message)),
+            ],
+          ),
+          backgroundColor: const Color(0xFFE14B4B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } on ValidationException catch (e) {
+      if (!mounted) return;
+      final errorMsg = e.errors.values
+          .expand((item) => item is List ? item : [item])
+          .join(', ');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMsg.isNotEmpty ? errorMsg : e.message),
+          backgroundColor: const Color(0xFFE14B4B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } on RequestTimeoutException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Permintaan ke server melebihi batas waktu (15 detik). Silakan coba lagi.'),
+          backgroundColor: Color(0xFFE14B4B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } on NetworkException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal terhubung ke server: ${e.message}'),
+          backgroundColor: const Color(0xFFE14B4B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Terjadi kesalahan: $e'),
+          backgroundColor: const Color(0xFFE14B4B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAddingToCart = false;
+        });
+      }
+    }
+  }
+
+  Widget _buildDetailBadge(Product p) {
+    if (!p.tersedia) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Text(
+          'Tidak Tersedia',
+          style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey),
+        ),
+      );
+    }
+    if (p.preOrder) {
+      final estimasi = (p.estimasiTersedia != null &&
+              p.estimasiTersedia!.isNotEmpty)
+          ? ' · Tiba: ${p.estimasiTersedia}'
+          : '';
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF3D6),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFE0A32E), width: 0.8),
+        ),
+        child: Text(
+          'Pre-Order$estimasi',
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF946200),
+          ),
+        ),
+      );
+    }
+    if (p.stok == 0) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFEBEB),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFE14B4B), width: 0.8),
+        ),
+        child: const Text(
+          'Stok Habis',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFFB42323),
+          ),
+        ),
+      );
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEBF8EE),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        'Stok Tersedia: ${p.stok} unit',
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF2E9E5B),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAttributeBox(String label, String value, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE6E6EC)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: const Color(0xFF2F6BFF)),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(fontSize: 11, color: Color(0xFF8A8A93)),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF15151A)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.produk.nama),
+      ),
+      body: FutureBuilder<Product>(
+        future: _futureDetail,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline,
+                        size: 48, color: Color(0xFFE14B4B)),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Gagal mengambil rincian produk:\n${snapshot.error}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontSize: 14, color: Color(0xFF15151A)),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2F6BFF),
+                        foregroundColor: Colors.white,
+                      ),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Coba Lagi'),
+                      onPressed: _reload,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          final product = snapshot.data;
+          if (product == null) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.inventory_2_outlined,
+                        size: 56, color: Colors.grey),
+                    const SizedBox(height: 12),
+                    const Text('Produk tidak ditemukan di server.'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Kembali ke Katalog'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          // Aturan bisnis ketersediaan pemesanan
+          final bool canOrder =
+              product.tersedia && (product.preOrder || product.stok > 0);
+          final int maxBeli = product.preOrder ? 9999 : product.stok;
+
+          final int hargaSatuan = _hitungHargaSatuan(product, _jumlah);
+          final int subtotal = hargaSatuan * _jumlah;
+          final bool isGrosirActive =
+              product.hargaGrosir.isNotEmpty && hargaSatuan < product.harga;
+
+          return Column(
+            children: [
+              // Konten Detail yang Dapat Digulir
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Nama & Badge Status
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              product.nama,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF15151A),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _buildDetailBadge(product),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // Kartu Harga Utama
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFE6E6EC)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Harga Satuan Normal',
+                              style: TextStyle(
+                                  fontSize: 12, color: Color(0xFF8A8A93)),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _formatRupiah(product.harga),
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF2F6BFF),
+                              ),
+                            ),
+                            if (isGrosirActive) ...[
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEAF0FF),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  'Harga Grosir Aktif: ${_formatRupiah(hargaSatuan)} / pcs untuk $_jumlah item',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF2F6BFF),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // Grid Atribut Khas Domain
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildAttributeBox(
+                              'Kategori',
+                              product.kategori,
+                              Icons.category_outlined,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildAttributeBox(
+                              'Stok Fisik',
+                              '${product.stok} unit',
+                              Icons.inventory_outlined,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildAttributeBox(
+                              'Pre-Order',
+                              product.preOrder ? 'Ya' : 'Tidak',
+                              Icons.schedule_outlined,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildAttributeBox(
+                              'Status Produk',
+                              product.tersedia ? 'Tersedia' : 'Dinonaktifkan',
+                              Icons.check_circle_outline,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Deskripsi Produk
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Deskripsi Produk',
+                        style: TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE6E6EC)),
+                        ),
+                        child: Text(
+                          product.deskripsi != null &&
+                                  product.deskripsi!.isNotEmpty
+                              ? product.deskripsi!
+                              : 'Tidak ada deskripsi untuk produk ini.',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF15151A),
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+
+                      // Tabel Tingkat Harga Grosir (jika tersedia)
+                      if (product.hargaGrosir.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Tingkat Harga Grosir (Server)',
+                          style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFE6E6EC)),
+                          ),
+                          child: Column(
+                            children: product.hargaGrosir.map((tier) {
+                              final bool tierReached =
+                                  _jumlah >= tier.minKuantitas;
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: tierReached
+                                      ? const Color(0xFFF0F5FF)
+                                      : Colors.transparent,
+                                  border: Border(
+                                    bottom: BorderSide(
+                                        color: Colors.grey.shade200),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          tierReached
+                                              ? Icons.check_circle
+                                              : Icons.radio_button_unchecked,
+                                          size: 16,
+                                          color: tierReached
+                                              ? const Color(0xFF2F6BFF)
+                                              : Colors.grey,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Beli minimal ${tier.minKuantitas} unit',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: tierReached
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                            color: const Color(0xFF15151A),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Text(
+                                      '${_formatRupiah(tier.hargaSatuan)} / unit',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: tierReached
+                                            ? const Color(0xFF2F6BFF)
+                                            : const Color(0xFF15151A),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+
+              // Bagian Bawah: Quantity Stepper & Tombol Tambah ke Keranjang
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0x0D000000),
+                      blurRadius: 10,
+                      offset: const Offset(0, -3),
+                    ),
+                  ],
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Baris Quantity Stepper & Subtotal
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Quantity Stepper
+                          Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF5F5F7),
+                              borderRadius: BorderRadius.circular(10),
+                              border:
+                                  Border.all(color: const Color(0xFFE6E6EC)),
+                            ),
+                            child: Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.remove, size: 18),
+                                  onPressed: (!canOrder || _jumlah <= 1)
+                                      ? null
+                                      : () {
+                                          setState(() {
+                                            _jumlah--;
+                                          });
+                                        },
+                                ),
+                                Container(
+                                  constraints:
+                                      const BoxConstraints(minWidth: 36),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    '$_jumlah',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.add, size: 18),
+                                  onPressed: (!canOrder || _jumlah >= maxBeli)
+                                      ? null
+                                      : () {
+                                          setState(() {
+                                            _jumlah++;
+                                          });
+                                        },
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          // Subtotal Hitungan Real-Time
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              const Text(
+                                'Estimasi Subtotal',
+                                style: TextStyle(
+                                    fontSize: 11, color: Color(0xFF8A8A93)),
+                              ),
+                              Text(
+                                _formatRupiah(subtotal),
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF15151A),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // Tombol Tambah ke Keranjang
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: !canOrder
+                                ? Colors.grey.shade400
+                                : (product.preOrder
+                                    ? const Color(0xFFE0A32E)
+                                    : const Color(0xFF0D0D12)),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: (!canOrder || _isAddingToCart)
+                              ? null
+                              : () => _tambahKeKeranjang(product),
+                          child: _isAddingToCart
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      product.preOrder
+                                          ? Icons.schedule
+                                          : Icons.add_shopping_cart,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      !product.tersedia
+                                          ? 'Produk Tidak Tersedia'
+                                          : (product.stok == 0 &&
+                                                  !product.preOrder
+                                              ? 'Stok Habis'
+                                              : (product.preOrder
+                                                  ? 'Pesan Pre-Order Sekarang'
+                                                  : 'Tambah ke Keranjang')),
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

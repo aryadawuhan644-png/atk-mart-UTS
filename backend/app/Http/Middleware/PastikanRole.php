@@ -15,6 +15,11 @@ class PastikanRole
      */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
+        // Berikan izin preflight OPTIONS melewati middleware tanpa perlu role
+        if ($request->isMethod('OPTIONS')) {
+            return $next($request);
+        }
+
         $currentRole = $request->attributes->get('auth_role');
 
         if (!$currentRole) {

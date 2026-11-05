@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 namespace App\Http\Middleware;
 
@@ -15,6 +15,11 @@ class TokenStatis
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // Berikan izin preflight OPTIONS melewati middleware tanpa perlu token
+        if ($request->isMethod('OPTIONS')) {
+            return $next($request);
+        }
+
         $authHeader = $request->header('Authorization');
 
         if (!$authHeader || !preg_match('/Bearer\s+(\S+)/', $authHeader, $matches)) {
@@ -62,4 +67,3 @@ class TokenStatis
         return $next($request);
     }
 }
-
