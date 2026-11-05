@@ -102,8 +102,7 @@ class LayananApi {
         : uri;
   }
 
-  /// Execute [fn], parse the Laravel envelope, and return [data] via [parser].
-  /// Throws typed [ApiException] subclasses on failure.
+  /// Execute [fn], parse the Laravel envelope, return [data] via [parser].
   Future<T> _request<T>(
     Future<http.Response> Function() fn,
     T Function(dynamic data) parser,
@@ -112,9 +111,9 @@ class LayananApi {
     try {
       response = await fn().timeout(_timeout);
     } on TimeoutException {
-      throw const RequestTimeoutException('Request ke server melebihi batas waktu (15s)');
+      throw const RequestTimeoutException(
+          'Request ke server melebihi batas waktu (15s)');
     } catch (e) {
-      // Catches SocketException, ClientException, etc.
       throw NetworkException('Tidak dapat terhubung ke server: $e');
     }
 
@@ -141,6 +140,7 @@ class LayananApi {
 
   // ---------------------------------------------------------------------------
   // 1. GET /produk
+  // Response: data is List of formatProduk objects.
   // ---------------------------------------------------------------------------
   Future<List<Product>> fetchProduk({String? cari, String? kategori}) async {
     final query = <String, String>{};
@@ -148,7 +148,8 @@ class LayananApi {
     if (kategori != null && kategori.isNotEmpty) query['kategori'] = kategori;
 
     return _request(
-      () => _client.get(_uri('/produk', query), headers: ApiConfig.defaultHeaders()),
+      () => _client.get(
+          _uri('/produk', query), headers: ApiConfig.defaultHeaders()),
       (data) => (data as List)
           .map((e) => Product.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -159,12 +160,15 @@ class LayananApi {
   // 2. GET /produk/{id}
   // ---------------------------------------------------------------------------
   Future<Product> fetchProdukDetail(int id) => _request(
-        () => _client.get(_uri('/produk/$id'), headers: ApiConfig.defaultHeaders()),
+        () => _client.get(
+            _uri('/produk/$id'), headers: ApiConfig.defaultHeaders()),
         (data) => Product.fromJson(data as Map<String, dynamic>),
       );
 
   // ---------------------------------------------------------------------------
-  // 3. POST /produk  (pengelola only)
+  // 3. POST /produk (pengelola only)
+  // payload: {nama, harga, kategori, stok, tersedia?, deskripsi?,
+  //           pre_order?, estimasi_tersedia?, harga_grosir?[]}
   // ---------------------------------------------------------------------------
   Future<Product> createProduk(Map<String, dynamic> payload) => _request(
         () => _client.post(
@@ -176,9 +180,10 @@ class LayananApi {
       );
 
   // ---------------------------------------------------------------------------
-  // 4. PUT /produk/{id}  (pengelola only)
+  // 4. PUT /produk/{id} (pengelola only)
   // ---------------------------------------------------------------------------
-  Future<Product> updateProduk(int id, Map<String, dynamic> payload) => _request(
+  Future<Product> updateProduk(int id, Map<String, dynamic> payload) =>
+      _request(
         () => _client.put(
           _uri('/produk/$id'),
           headers: ApiConfig.defaultHeaders(),
@@ -188,35 +193,47 @@ class LayananApi {
       );
 
   // ---------------------------------------------------------------------------
-  // 5. DELETE /produk/{id}  (pengelola only)
+  // 5. DELETE /produk/{id} (pengelola only)
+  // Returns 200 on success; 409 if product has active orders.
   // ---------------------------------------------------------------------------
   Future<void> deleteProduk(int id) => _request<void>(
-        () => _client.delete(_uri('/produk/$id'), headers: ApiConfig.defaultHeaders()),
+        () => _client.delete(
+            _uri('/produk/$id'), headers: ApiConfig.defaultHeaders()),
         (_) {},
       );
 
   // ---------------------------------------------------------------------------
   // 6. GET /kurir
+  // Without query: data = {kurir:[], wilayah:[], tarif:[]}
+  // With ?wilayah_id=X: data = {wilayah:{...}, kurir:[{kurir_id,nama,deskripsi,tarif}]}
   // ---------------------------------------------------------------------------
-  Future<List<Kurir>> fetchKurir() => _request(
-        () => _client.get(_uri('/kurir'), headers: ApiConfig.defaultHeaders()),
-        (data) => (data as List)
-            .map((e) => Kurir.fromJson(e as Map<String, dynamic>))
-            .toList(),
+  Future<KurirData> fetchKurir() => _request(
+        () => _client.get(
+            _uri('/kurir'), headers: ApiConfig.defaultHeaders()),
+        (data) => KurirData.fromJson(data as Map<String, dynamic>),
+      );
+
+  Future<KurirByWilayahData> fetchKurirByWilayah(int wilayahId) => _request(
+        () => _client.get(
+          _uri('/kurir', {'wilayah_id': wilayahId.toString()}),
+          headers: ApiConfig.defaultHeaders(),
+        ),
+        (data) => KurirByWilayahData.fromJson(data as Map<String, dynamic>),
       );
 
   // ---------------------------------------------------------------------------
-  // 7. GET /keranjang  (pembeli only)
+  // 7. GET /keranjang (pembeli only)
+  // Response: data = {items:[], subtotal:int, ongkos_kirim?:int, total?:int}
   // ---------------------------------------------------------------------------
-  Future<List<CartItem>> fetchKeranjang() => _request(
-        () => _client.get(_uri('/keranjang'), headers: ApiConfig.defaultHeaders()),
-        (data) => (data as List)
-            .map((e) => CartItem.fromJson(e as Map<String, dynamic>))
-            .toList(),
+  Future<KeranjangData> fetchKeranjang() => _request(
+        () => _client.get(
+            _uri('/keranjang'), headers: ApiConfig.defaultHeaders()),
+        (data) => KeranjangData.fromJson(data as Map<String, dynamic>),
       );
 
   // ---------------------------------------------------------------------------
-  // 8. POST /keranjang  (pembeli only)
+  // 8. POST /keranjang (pembeli only)
+  // payload: {produk_id, jumlah}
   // ---------------------------------------------------------------------------
   Future<void> addKeranjang({required int produkId, required int jumlah}) =>
       _request<void>(
@@ -229,7 +246,8 @@ class LayananApi {
       );
 
   // ---------------------------------------------------------------------------
-  // 9. PUT /keranjang/{id}  (pembeli only)
+  // 9. PUT /keranjang/{id} (pembeli only)
+  // payload: {jumlah}
   // ---------------------------------------------------------------------------
   Future<void> updateKeranjang({required int id, required int jumlah}) =>
       _request<void>(
@@ -242,7 +260,7 @@ class LayananApi {
       );
 
   // ---------------------------------------------------------------------------
-  // 10. DELETE /keranjang/{id}  (pembeli only)
+  // 10. DELETE /keranjang/{id} (pembeli only)
   // ---------------------------------------------------------------------------
   Future<void> deleteKeranjang(int id) => _request<void>(
         () => _client.delete(
@@ -251,10 +269,12 @@ class LayananApi {
       );
 
   // ---------------------------------------------------------------------------
-  // 11. POST /checkout  (pembeli only)
-  // Idempotency key MUST be sent as the HTTP header X-Kunci-Idempoten.
-  // Backend returns 200 (old order) or 201 (new order) on sukses,
-  // 409 on duplicate key with different payload.
+  // 11. POST /checkout (pembeli only)
+  // Header: X-Kunci-Idempoten = idempotencyKey
+  // payload: CheckoutRequest (nama_penerima, alamat, kota, wilayah_id, kurir_id, metode_pembayaran)
+  // Response 201 (new) or 200 (idempotent repeat): data = {pesanan_id, nomor_pesanan, status, subtotal, ongkos_kirim, total}
+  // Response 409 (different payload): throws ConflictException
+  // Response 422 (validation): throws ValidationException
   // ---------------------------------------------------------------------------
   Future<Order> checkout({
     required CheckoutRequest request,
@@ -264,8 +284,7 @@ class LayananApi {
         () => _client.post(
           _uri('/checkout'),
           headers: ApiConfig.defaultHeaders(
-            extra: {'X-Kunci-Idempoten': idempotencyKey},
-          ),
+              extra: {'X-Kunci-Idempoten': idempotencyKey}),
           body: jsonEncode(request.toJson()),
         ),
         (data) => Order.fromJson(data as Map<String, dynamic>),
@@ -273,9 +292,11 @@ class LayananApi {
 
   // ---------------------------------------------------------------------------
   // 12. GET /pesanan
+  // Response: data is List of formatPesananSummary objects.
   // ---------------------------------------------------------------------------
   Future<List<Order>> fetchPesanan() => _request(
-        () => _client.get(_uri('/pesanan'), headers: ApiConfig.defaultHeaders()),
+        () => _client.get(
+            _uri('/pesanan'), headers: ApiConfig.defaultHeaders()),
         (data) => (data as List)
             .map((e) => Order.fromJson(e as Map<String, dynamic>))
             .toList(),
@@ -283,6 +304,7 @@ class LayananApi {
 
   // ---------------------------------------------------------------------------
   // 13. GET /pesanan/{id}
+  // Response: data = formatPesananDetail (includes items & riwayat_status).
   // ---------------------------------------------------------------------------
   Future<Order> fetchPesananDetail(int id) => _request(
         () => _client.get(
@@ -292,6 +314,8 @@ class LayananApi {
 
   // ---------------------------------------------------------------------------
   // 14. PATCH /pesanan/{id}/status
+  // payload: {status: "new_status"}
+  // Response: data = formatPesananSummary of updated order.
   // ---------------------------------------------------------------------------
   Future<Order> updateStatusPesanan({
     required int id,

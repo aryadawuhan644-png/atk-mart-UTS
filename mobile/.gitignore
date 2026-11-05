@@ -46,3 +46,8 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+
+# Local configuration and secrets
+assets/config/env.json
+dart_defines/local_*.json

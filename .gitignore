@@ -1,4 +1,4 @@
-﻿# ==============================
+# ==============================
 # ENVIRONMENT & SECRETS
 # ==============================
 .env
@@ -64,3 +64,6 @@ Desktop.ini
 .idea/
 *.swp
 *.swo
+
+**/assets/config/env.json
+**/dart_defines/local_*.json

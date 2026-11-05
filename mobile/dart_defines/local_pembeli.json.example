@@ -1,0 +1,4 @@
+{
+  "STATIC_TOKEN": "GANTI_DENGAN_TOKEN_PEMBELI",
+  "API_BASE_URL": "http://127.0.0.1:8000/api"
+}

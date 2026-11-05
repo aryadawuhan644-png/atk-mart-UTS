@@ -1,53 +1,115 @@
 // lib/api/api_config.dart
-// Configuration for API base URL and static token.
-// Values are injected at build/run time via --dart-define.
-// No fallback values are provided – the app must be started with proper definitions.
+// Konfigurasi API Base URL dan Token Autentikasi.
+// Mendukung runtime injection via --dart-define serta pembacaan konfigurasi lokal
+// dari assets/config/env.json (yang di-ignore oleh Git) untuk kemudahan development.
 
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 class ApiConfig {
-  // Example launch commands:
-  // flutter run -d chrome --dart-define=API_BASE_URL=https://example.com/api --dart-define=STATIC_TOKEN=your-token
-  // flutter run -d android --dart-define=STATIC_TOKEN=your-token   (base URL defaults to Android emulator)
-
   static const String _rawBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: '',
   );
 
-  static const String staticToken = String.fromEnvironment(
+  static const String _envStaticToken = String.fromEnvironment(
     'STATIC_TOKEN',
     defaultValue: '',
   );
 
-  /// Resolve base URL based on environment variables and platform.
+  static String _localBaseUrl = '';
+  static String _tokenPembeli = '';
+  static String _tokenPengelola = '';
+  static String _activeRole = 'pembeli';
+  static String _overrideToken = '';
+
+  /// Inisialisasi konfigurasi lokal dari asset env.json jika tersedia.
+  /// Dipanggil saat bootstrap aplikasi di main().
+  static Future<void> initLocalConfig() async {
+    try {
+      final jsonStr = await rootBundle.loadString('assets/config/env.json');
+      final Map<String, dynamic> data = jsonDecode(jsonStr);
+      _tokenPembeli = (data['token_pembeli'] as String?)?.trim() ?? '';
+      _tokenPengelola = (data['token_pengelola'] as String?)?.trim() ?? '';
+      _activeRole = (data['active_role'] as String?)?.trim() ?? 'pembeli';
+      final baseUrl = (data['api_base_url'] as String?)?.trim() ?? '';
+      if (baseUrl.isNotEmpty) {
+        _localBaseUrl = baseUrl;
+      }
+    } catch (_) {
+      // File env.json tidak tersedia (misal di CI/CD atau clean clone tanpa file lokal).
+    }
+  }
+
+  /// Ubah role aktif secara dinamis ('pembeli' atau 'pengelola').
+  static void setActiveRole(String role) {
+    _activeRole = role;
+  }
+
+  /// Ambil role aktif saat ini.
+  static String get activeRole => _activeRole;
+
+  /// Atur token kustom secara manual (override sementara).
+  static void setCustomToken(String token) {
+    _overrideToken = token;
+  }
+
+  /// Reset override token.
+  static void clearCustomToken() {
+    _overrideToken = '';
+  }
+
+  /// Token statis aktif:
+  /// 1. Override manual (setCustomToken)
+  /// 2. Nilai dari --dart-define=STATIC_TOKEN
+  /// 3. Token dari assets/config/env.json sesuai activeRole ('pengelola' atau 'pembeli')
+  static String get staticToken {
+    if (_overrideToken.isNotEmpty) return _overrideToken;
+    if (_envStaticToken.isNotEmpty) return _envStaticToken;
+    if (_activeRole == 'pengelola' && _tokenPengelola.isNotEmpty) {
+      return _tokenPengelola;
+    }
+    if (_tokenPembeli.isNotEmpty) {
+      return _tokenPembeli;
+    }
+    return '';
+  }
+
+  /// Base URL API:
+  /// 1. Nilai dari --dart-define=API_BASE_URL
+  /// 2. Nilai api_base_url dari assets/config/env.json
+  /// 3. Default otomatis per-platform:
+  ///    - Chrome/Web: http://127.0.0.1:8000/api
+  ///    - Android Emulator: http://10.0.2.2:8000/api
+  ///    - Windows/Desktop/lainnya: http://127.0.0.1:8000/api
   static String get baseUrl {
     if (_rawBaseUrl.isNotEmpty) return _rawBaseUrl;
-    // Platform‑specific defaults when no env var is provided.
+    if (_localBaseUrl.isNotEmpty) return _localBaseUrl;
+
     if (kIsWeb) {
-      return 'http://localhost:8000/api'; // Web dev server
+      return 'http://127.0.0.1:8000/api';
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        // Android emulator accesses host machine via 10.0.2.2
         return 'http://10.0.2.2:8000/api';
       case TargetPlatform.windows:
-        return 'http://127.0.0.1:8000/api';
       default:
-        // Fallback for other platforms (iOS, macOS, Linux)
         return 'http://127.0.0.1:8000/api';
     }
   }
 
-  /// Base headers used for all requests.
-  /// Extra headers can be merged via the [extra] map.
+  /// Header default untuk seluruh panggilan REST API.
   static Map<String, String> defaultHeaders({Map<String, String>? extra}) {
-    if (staticToken.isEmpty) {
-      // Throw early so developers notice missing token configuration.
-      throw StateError('STATIC_TOKEN not provided via --dart-define');
+    final token = staticToken;
+    if (token.isEmpty) {
+      throw StateError(
+        'Token autentikasi belum dikonfigurasi. '
+        'Pastikan assets/config/env.json terisi atau gunakan --dart-define=STATIC_TOKEN=...',
+      );
     }
     return {
-      'Authorization': 'Bearer $staticToken',
+      'Authorization': 'Bearer $token',
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       ...?extra,
