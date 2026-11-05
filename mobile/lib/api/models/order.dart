@@ -79,6 +79,8 @@ class Order {
 
   // Additional fields present in list/detail responses (null for checkout)
   final String? namaPenerima;
+  final String? alamat;
+  final String? kota;
   final String? kurir;
   final String? wilayah;
   final String? metodePembayaran;
@@ -97,6 +99,8 @@ class Order {
     required this.ongkosKirim,
     required this.total,
     this.namaPenerima,
+    this.alamat,
+    this.kota,
     this.kurir,
     this.wilayah,
     this.metodePembayaran,
@@ -126,6 +130,8 @@ class Order {
       ongkosKirim: json['ongkos_kirim'] as int,
       total: json['total'] as int,
       namaPenerima: json['nama_penerima'] as String?,
+      alamat: json['alamat'] as String?,
+      kota: json['kota'] as String?,
       kurir: resolveString(json['kurir']),
       wilayah: resolveString(json['wilayah']),
       metodePembayaran: resolveString(json['metode_pembayaran']),
