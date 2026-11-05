@@ -1,0 +1,66 @@
+﻿# ==============================
+# ENVIRONMENT & SECRETS
+# ==============================
+.env
+.env.*
+!.env.example
+!.env.testing
+auth.json
+**/auth.json
+*.pem
+*.key
+*.p12
+*.pfx
+
+# ==============================
+# LARAVEL / PHP
+# ==============================
+**/vendor/
+**/node_modules/
+**/storage/*.key
+**/storage/logs/*
+**/storage/framework/cache/*
+**/storage/framework/sessions/*
+**/storage/framework/views/*
+**/bootstrap/cache/*.php
+.phpunit.cache/
+.phpunit.result.cache
+
+# ==============================
+# FLUTTER / DART
+# ==============================
+**/.dart_tool/
+**/build/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/pubspec_overrides.yaml
+**/android/local.properties
+**/android/key.properties
+**/android/app/*.jks
+**/android/app/*.keystore
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework/
+**/ios/Flutter/App.framework/
+**/macos/Pods/
+**/linux/flutter/ephemeral/
+**/windows/flutter/ephemeral/
+
+# ==============================
+# DATABASE BACKUPS & LOGS
+# ==============================
+*.sql
+*.sql.gz
+*.dump
+*.log
+
+# ==============================
+# EDITORS & OPERATING SYSTEM
+# ==============================
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+*.swp
+*.swo
