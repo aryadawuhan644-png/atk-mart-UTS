@@ -111,31 +111,53 @@ class Order {
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
-    // Normalise id: checkout returns 'pesanan_id', list/detail return 'id'
+    // Normalise id: checkout/PATCH return 'pesanan_id', list/detail return 'id'
     final rawId = json['pesanan_id'] ?? json['id'];
+    final int parsedId;
+    if (rawId is int) {
+      parsedId = rawId;
+    } else if (rawId is num) {
+      parsedId = rawId.toInt();
+    } else {
+      parsedId = int.tryParse(rawId?.toString() ?? '') ?? 0;
+    }
 
     // kurir/wilayah/metode_pembayaran can be a string (summary) or a map (detail)
     String? resolveString(dynamic val) {
       if (val == null) return null;
       if (val is String) return val;
-      if (val is Map) return val['nama'] as String?;
-      return null;
+      if (val is Map) {
+        final nama = val['nama'];
+        if (nama != null && nama.toString().isNotEmpty) {
+          return nama.toString();
+        }
+        final kode = val['kode'];
+        if (kode != null && kode.toString().isNotEmpty) {
+          return kode.toString();
+        }
+      }
+      return val.toString();
     }
 
+    // Normalise status: PATCH /pesanan/{id}/status returns 'status_baru'/'status_lama',
+    // list/detail/checkout return 'status'
+    final rawStatus = json['status'] ?? json['status_baru'] ?? json['status_lama'];
+    final status = (rawStatus is String) ? rawStatus : (rawStatus?.toString() ?? '');
+
     return Order(
-      id: rawId as int,
-      nomorPesanan: json['nomor_pesanan'] as String,
-      status: json['status'] as String,
-      subtotal: json['subtotal'] as int,
-      ongkosKirim: json['ongkos_kirim'] as int,
-      total: json['total'] as int,
+      id: parsedId,
+      nomorPesanan: (json['nomor_pesanan'] as String?) ?? '',
+      status: status,
+      subtotal: (json['subtotal'] as num?)?.toInt() ?? 0,
+      ongkosKirim: (json['ongkos_kirim'] as num?)?.toInt() ?? 0,
+      total: (json['total'] as num?)?.toInt() ?? 0,
       namaPenerima: json['nama_penerima'] as String?,
       alamat: json['alamat'] as String?,
       kota: json['kota'] as String?,
       kurir: resolveString(json['kurir']),
       wilayah: resolveString(json['wilayah']),
       metodePembayaran: resolveString(json['metode_pembayaran']),
-      jumlahItem: json['jumlah_item'] as int?,
+      jumlahItem: (json['jumlah_item'] as num?)?.toInt(),
       createdAt: json['created_at'] as String?,
       items: json['items'] != null
           ? (json['items'] as List)

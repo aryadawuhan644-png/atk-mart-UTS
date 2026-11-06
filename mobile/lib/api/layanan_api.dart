@@ -22,15 +22,15 @@ class ApiException implements Exception {
   final String message;
   const ApiException(this.message);
   @override
-  String toString() => 'ApiException: $message';
+  String toString() => message;
 }
 
 class NetworkException extends ApiException {
-  const NetworkException(super.message);
+  const NetworkException([super.message = 'Tidak dapat terhubung ke server ATK Mart. Periksa koneksi internet Anda.']);
 }
 
 class RequestTimeoutException extends ApiException {
-  const RequestTimeoutException(super.message);
+  const RequestTimeoutException([super.message = 'Permintaan ke server melebihi batas waktu (15 detik). Silakan coba lagi.']);
 }
 
 class ValidationException extends ApiException {
@@ -42,8 +42,20 @@ class ConflictException extends ApiException {
   const ConflictException(super.message);
 }
 
+class UnauthorizedException extends ApiException {
+  const UnauthorizedException([super.message = 'Sesi tidak sah. Token autentikasi tidak valid atau belum diatur.']);
+}
+
+class ForbiddenException extends ApiException {
+  const ForbiddenException([super.message = 'Akses ditolak: Anda tidak memiliki wewenang untuk tindakan ini.']);
+}
+
+class NotFoundException extends ApiException {
+  const NotFoundException([super.message = 'Data yang diminta tidak ditemukan di server (404).']);
+}
+
 class ServerException extends ApiException {
-  const ServerException(super.message);
+  const ServerException([super.message = 'Terjadi kendala pada server (500). Silakan coba beberapa saat lagi.']);
 }
 
 // ---------------------------------------------------------------------------
@@ -65,15 +77,28 @@ class _LaravelResponse {
     this.errors,
   });
 
-  factory _LaravelResponse.parse(String body) {
-    final json = jsonDecode(body) as Map<String, dynamic>;
-    return _LaravelResponse(
-      status: json['status'] as String? ?? '',
-      code: json['code'] as String? ?? '0',
-      message: json['message'] as String? ?? '',
-      data: json['data'],
-      errors: json['errors'] as Map<String, dynamic>?,
-    );
+  factory _LaravelResponse.parse(String body, [int fallbackStatusCode = 0]) {
+    try {
+      final json = jsonDecode(body) as Map<String, dynamic>;
+      return _LaravelResponse(
+        status: json['status'] as String? ?? '',
+        code: json['code']?.toString() ?? '$fallbackStatusCode',
+        message: json['message'] as String? ?? '',
+        data: json['data'],
+        errors: json['errors'] is Map ? (json['errors'] as Map).cast<String, dynamic>() : null,
+      );
+    } catch (_) {
+      return _LaravelResponse(
+        status: 'gagal',
+        code: '$fallbackStatusCode',
+        message: fallbackStatusCode == 500
+            ? 'Terjadi kendala pada server (500). Silakan coba beberapa saat lagi.'
+            : (fallbackStatusCode == 404
+                ? 'Data yang diminta tidak ditemukan (404).'
+                : 'Respon dari server tidak valid.'),
+        data: null,
+      );
+    }
   }
 
   bool get isSuccess => status == 'sukses';
@@ -84,10 +109,22 @@ class _LaravelResponse {
 // ---------------------------------------------------------------------------
 
 class LayananApi {
+  static http.Client? _mockClient;
+
+  /// Injeksi mock client untuk keperluan automated testing.
+  static void setMockClient(http.Client? client) {
+    _mockClient = client;
+  }
+
+  static http.Client? get mockClient => _mockClient;
+
   final http.Client _client;
   static const Duration _timeout = Duration(seconds: 15);
 
-  LayananApi({http.Client? client}) : _client = client ?? http.Client();
+  http.Client get client => _client;
+
+  LayananApi({http.Client? client})
+      : _client = client ?? _mockClient ?? http.Client();
 
   // --- Helpers ---------------------------------------------------------------
 
@@ -112,12 +149,13 @@ class LayananApi {
       response = await fn().timeout(_timeout);
     } on TimeoutException {
       throw const RequestTimeoutException(
-          'Request ke server melebihi batas waktu (15s)');
-    } catch (e) {
-      throw NetworkException('Tidak dapat terhubung ke server: $e');
+          'Permintaan ke server melebihi batas waktu (15 detik). Silakan coba lagi.');
+    } catch (_) {
+      throw const NetworkException(
+          'Tidak dapat terhubung ke server ATK Mart. Periksa koneksi internet Anda.');
     }
 
-    final env = _LaravelResponse.parse(response.body);
+    final env = _LaravelResponse.parse(response.body, response.statusCode);
     final httpCode = int.tryParse(env.code) ?? response.statusCode;
 
     if (env.isSuccess) {
@@ -126,15 +164,24 @@ class LayananApi {
 
     switch (httpCode) {
       case 401:
-        throw ApiException('Tidak diotorisasi: ${env.message}');
+        throw UnauthorizedException(
+            env.message.isNotEmpty ? env.message : 'Sesi tidak sah. Token autentikasi tidak valid atau belum diatur.');
+      case 403:
+        throw ForbiddenException(
+            env.message.isNotEmpty ? env.message : 'Akses ditolak: Anda tidak memiliki wewenang untuk tindakan ini.');
+      case 404:
+        throw NotFoundException(
+            env.message.isNotEmpty ? env.message : 'Data yang diminta tidak ditemukan di server (404).');
       case 409:
         throw ConflictException(env.message);
       case 422:
         throw ValidationException(env.message, env.errors ?? {});
       case 500:
-        throw ServerException(env.message);
+        throw const ServerException(
+            'Terjadi kendala pada server (500). Silakan coba beberapa saat lagi.');
       default:
-        throw ApiException('Error $httpCode: ${env.message}');
+        throw ApiException(
+            env.message.isNotEmpty ? env.message : 'Terjadi kendala dengan kode status $httpCode');
     }
   }
 
@@ -310,6 +357,15 @@ class LayananApi {
             .toList(),
       );
 
+  /// 12b. GET /pesanan (pengelola - melihat seluruh pesanan pelanggan)
+  Future<List<Order>> fetchPesananPengelola() => _request(
+        () => _client.get(
+            _uri('/pesanan'), headers: ApiConfig.pengelolaHeaders()),
+        (data) => (data as List)
+            .map((e) => Order.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+
   // ---------------------------------------------------------------------------
   // 13. GET /pesanan/{id}
   // Response: data = formatPesananDetail (includes items & riwayat_status).
@@ -317,6 +373,13 @@ class LayananApi {
   Future<Order> fetchPesananDetail(int id) => _request(
         () => _client.get(
             _uri('/pesanan/$id'), headers: ApiConfig.defaultHeaders()),
+        (data) => Order.fromJson(data as Map<String, dynamic>),
+      );
+
+  /// 13b. GET /pesanan/{id} (pengelola)
+  Future<Order> fetchPesananDetailPengelola(int id) => _request(
+        () => _client.get(
+            _uri('/pesanan/$id'), headers: ApiConfig.pengelolaHeaders()),
         (data) => Order.fromJson(data as Map<String, dynamic>),
       );
 
@@ -328,12 +391,34 @@ class LayananApi {
   Future<Order> updateStatusPesanan({
     required int id,
     required String status,
+    String? catatan,
   }) =>
       _request(
         () => _client.patch(
           _uri('/pesanan/$id/status'),
           headers: ApiConfig.defaultHeaders(),
-          body: jsonEncode({'status': status}),
+          body: jsonEncode({
+            'status': status,
+            'catatan': ?catatan,
+          }),
+        ),
+        (data) => Order.fromJson(data as Map<String, dynamic>),
+      );
+
+  /// 14b. PATCH /pesanan/{id}/status (pengelola - konfirmasi pembayaran & status lain)
+  Future<Order> updateStatusPesananPengelola({
+    required int id,
+    required String status,
+    String? catatan,
+  }) =>
+      _request(
+        () => _client.patch(
+          _uri('/pesanan/$id/status'),
+          headers: ApiConfig.pengelolaHeaders(),
+          body: jsonEncode({
+            'status': status,
+            'catatan': ?catatan,
+          }),
         ),
         (data) => Order.fromJson(data as Map<String, dynamic>),
       );

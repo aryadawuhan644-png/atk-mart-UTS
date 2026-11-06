@@ -48,6 +48,99 @@ String _formatRupiah(int nominal) {
 }
 
 // ---------------------------------------------------------------------------
+// Format pesan kesalahan yang ramah pengguna dan bebas exception mentah
+// ---------------------------------------------------------------------------
+String formatAppErrorMessage(Object error) {
+  if (error is NetworkException) {
+    return 'Gagal terhubung ke server ATK Mart.\nPastikan backend Laravel berjalan dan koneksi internet aktif.';
+  }
+  if (error is RequestTimeoutException) {
+    return 'Permintaan ke server melebihi batas waktu (15 detik). Silakan coba lagi.';
+  }
+  if (error is UnauthorizedException) {
+    return 'Sesi tidak sah. Token autentikasi tidak valid atau belum diatur.';
+  }
+  if (error is ForbiddenException) {
+    return 'Akses ditolak: Anda tidak memiliki wewenang untuk tindakan ini.';
+  }
+  if (error is NotFoundException) {
+    return 'Data yang diminta tidak ditemukan di server (404).';
+  }
+  if (error is ServerException) {
+    return 'Terjadi kendala pada server (500). Silakan coba beberapa saat lagi.';
+  }
+  if (error is ConflictException) {
+    final msg = error.message.trim();
+    if (msg.toLowerCase().contains('stok')) {
+      return 'Stok produk tidak mencukupi untuk memenuhi pesanan Anda.';
+    }
+    if (msg.toLowerCase().contains('transisi status')) {
+      return 'Status pesanan tidak dapat diubah pada tahap ini.';
+    }
+    return msg.isNotEmpty ? msg : 'Terjadi konflik data pada pesanan atau stok.';
+  }
+  if (error is ValidationException) {
+    if (error.errors.isNotEmpty) {
+      final detail = error.errors.values
+          .expand((item) => item is List ? item : [item])
+          .join('\n');
+      return detail.isNotEmpty ? detail : error.message;
+    }
+    return error.message.isNotEmpty
+        ? error.message
+        : 'Data yang dimasukkan tidak valid. Mohon periksa kembali formulir.';
+  }
+  if (error is ApiException) {
+    final clean = error.message.replaceAll('ApiException:', '').trim();
+    return clean.isNotEmpty ? clean : 'Terjadi kesalahan pada layanan API.';
+  }
+
+  final str = error.toString();
+  if (str.contains('SocketException') ||
+      str.contains('NetworkException') ||
+      str.contains('Failed host lookup') ||
+      str.contains('ClientException') ||
+      str.contains('Connection refused')) {
+    return 'Gagal terhubung ke server ATK Mart.\nPastikan backend Laravel berjalan di http://127.0.0.1:8000.';
+  }
+  if (str.contains('RequestTimeoutException') ||
+      str.contains('TimeoutException') ||
+      str.contains('15s')) {
+    return 'Permintaan ke server melebihi batas waktu (15 detik). Silakan coba lagi.';
+  }
+  if (str.contains('401') || str.contains('Unauthorized')) {
+    return 'Sesi tidak sah. Token autentikasi tidak valid atau belum diatur.';
+  }
+  if (str.contains('403') || str.contains('Forbidden')) {
+    return 'Akses ditolak: Anda tidak memiliki wewenang untuk tindakan ini.';
+  }
+  if (str.contains('404')) {
+    return 'Data yang diminta tidak ditemukan di server (404).';
+  }
+  if (str.contains('500') || str.contains('ServerException')) {
+    return 'Terjadi kendala pada server (500). Silakan coba beberapa saat lagi.';
+  }
+  if (str.contains('Token autentikasi belum dikonfigurasi') ||
+      str.contains('Token pengelola belum dikonfigurasi')) {
+    return 'Token autentikasi belum diatur. Pastikan file konfigurasi token sudah diisi.';
+  }
+
+  final cleaned = str
+      .replaceAll(RegExp(r'^(Exception|Error|ApiException|ServerException|ClientException):\s*'), '')
+      .trim();
+
+  if (cleaned.contains('FormatException') ||
+      cleaned.contains('TypeError') ||
+      cleaned.contains('NoSuchMethodError') ||
+      cleaned.contains('Null check operator') ||
+      cleaned.isEmpty) {
+    return 'Terjadi kendala saat memproses permintaan. Silakan coba beberapa saat lagi.';
+  }
+
+  return cleaned;
+}
+
+// ---------------------------------------------------------------------------
 // Halaman Katalog Produk (ProdukListPage)
 // ---------------------------------------------------------------------------
 class ProdukListPage extends StatefulWidget {
@@ -107,25 +200,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
     });
   }
 
-  String _formatErrorMessage(Object error) {
-    final str = error.toString();
-    if (str.contains('SocketException') ||
-        str.contains('NetworkException') ||
-        str.contains('Failed host lookup') ||
-        str.contains('ClientException')) {
-      return 'Gagal terhubung ke server ATK Mart.\nPastikan backend Laravel berjalan di http://127.0.0.1:8000.';
-    }
-    if (str.contains('RequestTimeoutException') || str.contains('15s')) {
-      return 'Permintaan ke server melebihi batas waktu (15 detik). Silakan coba lagi.';
-    }
-    if (str.contains('Token autentikasi belum dikonfigurasi')) {
-      return 'Token autentikasi belum diatur. Pastikan file assets/config/env.json sudah diisi.';
-    }
-    if (str.contains('ApiException')) {
-      return str.replaceAll('ApiException:', '').trim();
-    }
-    return 'Terjadi kendala saat memuat katalog: $error';
-  }
+  String _formatErrorMessage(Object error) => formatAppErrorMessage(error);
 
   Widget _buildStatusBadge(Product p) {
     if (!p.tersedia) {
@@ -313,6 +388,16 @@ class _ProdukListPageState extends State<ProdukListPage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const KelolaProdukPage()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.assignment_outlined),
+            tooltip: 'Kelola Pesanan (Pengelola)',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const KelolaPesananPage()),
               );
             },
           ),
@@ -707,7 +792,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
               const Icon(Icons.warning_amber_rounded,
                   color: Colors.white, size: 20),
               const SizedBox(width: 8),
-              Expanded(child: Text(e.message)),
+              Expanded(child: Text(formatAppErrorMessage(e))),
             ],
           ),
           backgroundColor: const Color(0xFFE14B4B),
@@ -721,7 +806,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
           .join(', ');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(errorMsg.isNotEmpty ? errorMsg : e.message),
+          content: Text(errorMsg.isNotEmpty ? errorMsg : formatAppErrorMessage(e)),
           backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
@@ -740,7 +825,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal terhubung ke server: ${e.message}'),
+          content: Text(formatAppErrorMessage(e)),
           backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
@@ -749,7 +834,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Terjadi kesalahan: $e'),
+          content: Text(formatAppErrorMessage(e)),
           backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
@@ -904,7 +989,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                         size: 48, color: Color(0xFFE14B4B)),
                     const SizedBox(height: 12),
                     Text(
-                      'Gagal mengambil rincian produk:\n${snapshot.error}',
+                      formatAppErrorMessage(snapshot.error!),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                           fontSize: 14, color: Color(0xFF15151A)),
@@ -1380,22 +1465,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
     });
   }
 
-  String _formatErrorMessage(Object error) {
-    final str = error.toString();
-    if (str.contains('SocketException') ||
-        str.contains('NetworkException') ||
-        str.contains('Failed host lookup') ||
-        str.contains('ClientException')) {
-      return 'Gagal terhubung ke server ATK Mart.\nPastikan backend Laravel berjalan di http://127.0.0.1:8000.';
-    }
-    if (str.contains('RequestTimeoutException') || str.contains('15s')) {
-      return 'Permintaan ke server melebihi batas waktu (15 detik). Silakan coba lagi.';
-    }
-    if (str.contains('ApiException')) {
-      return str.replaceAll('ApiException:', '').trim();
-    }
-    return 'Terjadi kendala saat memuat keranjang: $error';
-  }
+  String _formatErrorMessage(Object error) => formatAppErrorMessage(error);
 
   Future<void> _updateItemQty(CartItem item, int newQty) async {
     if (_isProcessing) return;
@@ -1415,7 +1485,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.message),
+          content: Text(formatAppErrorMessage(e)),
           backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
@@ -1427,7 +1497,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
           .join(', ');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(msg.isNotEmpty ? msg : e.message),
+          content: Text(msg.isNotEmpty ? msg : formatAppErrorMessage(e)),
           backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
@@ -1445,7 +1515,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal memperbarui kuantitas: $e'),
+          content: Text(formatAppErrorMessage(e)),
           backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
@@ -1506,7 +1576,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal menghapus produk: $e'),
+          content: Text(formatAppErrorMessage(e)),
           backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
@@ -1882,6 +1952,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   bool _isLoadingSummary = false;
   bool _isSubmitting = false;
   String? _errorSummary;
+  Map<String, String> _fieldErrors = {};
 
   @override
   void initState() {
@@ -1919,7 +1990,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorSummary = 'Gagal memuat rincian biaya dari server: $e';
+        _errorSummary = formatAppErrorMessage(e);
       });
     } finally {
       if (mounted) {
@@ -1972,6 +2043,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
     setState(() {
       _isSubmitting = true;
+      _fieldErrors.clear();
     });
 
     try {
@@ -2007,7 +2079,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
               const Icon(Icons.warning_amber_rounded,
                   color: Colors.white, size: 20),
               const SizedBox(width: 8),
-              Expanded(child: Text(e.message)),
+              Expanded(child: Text(formatAppErrorMessage(e))),
             ],
           ),
           backgroundColor: const Color(0xFFE14B4B),
@@ -2016,12 +2088,22 @@ class _CheckoutPageState extends State<CheckoutPage> {
       );
     } on ValidationException catch (e) {
       if (!mounted) return;
+      setState(() {
+        _fieldErrors = e.errors.map((key, val) {
+          if (val is List && val.isNotEmpty) {
+            return MapEntry(key, val.first.toString());
+          }
+          return MapEntry(key, val.toString());
+        });
+      });
       final msg = e.errors.values
           .expand((item) => item is List ? item : [item])
           .join(', ');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(msg.isNotEmpty ? msg : e.message),
+          content: Text(msg.isNotEmpty
+              ? 'Validasi gagal: $msg'
+              : formatAppErrorMessage(e)),
           backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
@@ -2042,7 +2124,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal terhubung ke server: ${e.message}'),
+          content: Text(formatAppErrorMessage(e)),
           backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
@@ -2051,7 +2133,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Terjadi kesalahan saat memproses checkout: $e'),
+          content: Text(formatAppErrorMessage(e)),
           backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
@@ -2089,19 +2171,24 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         size: 48, color: Color(0xFFE14B4B)),
                     const SizedBox(height: 12),
                     Text(
-                      'Gagal memuat opsi kurir dan wilayah:\n${snapshot.error}',
+                      'Gagal memuat opsi kurir dan wilayah:\n${formatAppErrorMessage(snapshot.error!)}',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                           fontSize: 14, color: Color(0xFF15151A)),
                     ),
                     const SizedBox(height: 16),
-                    ElevatedButton(
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2F6BFF),
+                        foregroundColor: Colors.white,
+                      ),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Coba Lagi'),
                       onPressed: () {
                         setState(() {
                           _futureKurir = _api.fetchKurir();
                         });
                       },
-                      child: const Text('Coba Lagi'),
                     ),
                   ],
                 ),
@@ -2145,11 +2232,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             children: [
                               TextFormField(
                                 controller: _namaController,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'Nama Lengkap Penerima *',
-                                  prefixIcon: Icon(Icons.person_outline),
-                                  border: OutlineInputBorder(),
+                                  prefixIcon: const Icon(Icons.person_outline),
+                                  border: const OutlineInputBorder(),
+                                  errorText: _fieldErrors['nama_penerima'],
                                 ),
+                                onChanged: (_) {
+                                  if (_fieldErrors.containsKey('nama_penerima')) {
+                                    setState(() => _fieldErrors.remove('nama_penerima'));
+                                  }
+                                },
                                 validator: (val) {
                                   if (val == null || val.trim().isEmpty) {
                                     return 'Nama penerima wajib diisi';
@@ -2161,11 +2254,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
                               TextFormField(
                                 controller: _alamatController,
                                 maxLines: 2,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'Alamat Lengkap Pengiriman *',
-                                  prefixIcon: Icon(Icons.location_on_outlined),
-                                  border: OutlineInputBorder(),
+                                  prefixIcon: const Icon(Icons.location_on_outlined),
+                                  border: const OutlineInputBorder(),
+                                  errorText: _fieldErrors['alamat'],
                                 ),
+                                onChanged: (_) {
+                                  if (_fieldErrors.containsKey('alamat')) {
+                                    setState(() => _fieldErrors.remove('alamat'));
+                                  }
+                                },
                                 validator: (val) {
                                   if (val == null || val.trim().isEmpty) {
                                     return 'Alamat pengiriman wajib diisi';
@@ -2176,13 +2275,19 @@ class _CheckoutPageState extends State<CheckoutPage> {
                               const SizedBox(height: 12),
                               TextFormField(
                                 controller: _kotaController,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'Kota Tujuan *',
                                   helperText:
                                       'Pengiriman ATK Mart saat ini khusus area Kota Malang',
-                                  prefixIcon: Icon(Icons.location_city_outlined),
-                                  border: OutlineInputBorder(),
+                                  prefixIcon: const Icon(Icons.location_city_outlined),
+                                  border: const OutlineInputBorder(),
+                                  errorText: _fieldErrors['kota'],
                                 ),
+                                onChanged: (_) {
+                                  if (_fieldErrors.containsKey('kota')) {
+                                    setState(() => _fieldErrors.remove('kota'));
+                                  }
+                                },
                                 validator: (val) {
                                   if (val == null || val.trim().isEmpty) {
                                     return 'Kota tujuan wajib diisi';
@@ -2221,10 +2326,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             children: [
                               DropdownButtonFormField<WilayahItem>(
                                 initialValue: _selectedWilayah,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'Pilih Wilayah / Kecamatan *',
-                                  prefixIcon: Icon(Icons.map_outlined),
-                                  border: OutlineInputBorder(),
+                                  prefixIcon: const Icon(Icons.map_outlined),
+                                  border: const OutlineInputBorder(),
+                                  errorText: _fieldErrors['wilayah_id'],
                                 ),
                                 items: wilayahList.map((w) {
                                   return DropdownMenuItem<WilayahItem>(
@@ -2235,6 +2341,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 onChanged: (val) {
                                   setState(() {
                                     _selectedWilayah = val;
+                                    if (_fieldErrors.containsKey('wilayah_id')) {
+                                      _fieldErrors.remove('wilayah_id');
+                                    }
                                   });
                                   _fetchRingkasanServer();
                                 },
@@ -2244,10 +2353,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
                               const SizedBox(height: 12),
                               DropdownButtonFormField<KurirItem>(
                                 initialValue: _selectedKurir,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'Pilih Layanan Kurir *',
-                                  prefixIcon: Icon(Icons.local_shipping_outlined),
-                                  border: OutlineInputBorder(),
+                                  prefixIcon: const Icon(Icons.local_shipping_outlined),
+                                  border: const OutlineInputBorder(),
+                                  errorText: _fieldErrors['kurir_id'],
                                 ),
                                 items: kurirList.map((k) {
                                   return DropdownMenuItem<KurirItem>(
@@ -2263,6 +2373,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 onChanged: (val) {
                                   setState(() {
                                     _selectedKurir = val;
+                                    if (_fieldErrors.containsKey('kurir_id')) {
+                                      _fieldErrors.remove('kurir_id');
+                                    }
                                   });
                                   _fetchRingkasanServer();
                                 },
@@ -2415,11 +2528,43 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                   ),
                                 )
                               : _errorSummary != null
-                                  ? Text(
-                                      _errorSummary!,
-                                      style: const TextStyle(
-                                          color: Color(0xFFE14B4B),
-                                          fontSize: 13),
+                                  ? Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFFF0F0),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                            color: const Color(0xFFE14B4B)
+                                                .withValues(alpha: 0.3)),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            _errorSummary!,
+                                            style: const TextStyle(
+                                                color: Color(0xFFE14B4B),
+                                                fontSize: 13),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          TextButton.icon(
+                                            onPressed: _fetchRingkasanServer,
+                                            icon: const Icon(Icons.refresh,
+                                                size: 16),
+                                            label: const Text('Hitung Ulang'),
+                                            style: TextButton.styleFrom(
+                                              foregroundColor:
+                                                  const Color(0xFF2F6BFF),
+                                              padding: EdgeInsets.zero,
+                                              minimumSize: Size.zero,
+                                              tapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     )
                                   : Column(
                                       children: [
@@ -2930,22 +3075,7 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
     });
   }
 
-  String _formatErrorMessage(Object error) {
-    final str = error.toString();
-    if (str.contains('SocketException') ||
-        str.contains('NetworkException') ||
-        str.contains('Failed host lookup') ||
-        str.contains('ClientException')) {
-      return 'Gagal terhubung ke server ATK Mart.\nPastikan backend Laravel berjalan di http://127.0.0.1:8000.';
-    }
-    if (str.contains('RequestTimeoutException') || str.contains('15s')) {
-      return 'Permintaan ke server melebihi batas waktu (15 detik). Silakan coba lagi.';
-    }
-    if (str.contains('ApiException')) {
-      return str.replaceAll('ApiException:', '').trim();
-    }
-    return 'Terjadi kendala saat memuat riwayat pesanan: $error';
-  }
+  String _formatErrorMessage(Object error) => formatAppErrorMessage(error);
 
   @override
   Widget build(BuildContext context) {
@@ -3212,10 +3342,12 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
 class RincianPesananPage extends StatefulWidget {
   final int pesananId;
   final String nomorPesanan;
+  final bool isPengelola;
 
   const RincianPesananPage({
     required this.pesananId,
     required this.nomorPesanan,
+    this.isPengelola = false,
     super.key,
   });
 
@@ -3226,41 +3358,151 @@ class RincianPesananPage extends StatefulWidget {
 class _RincianPesananPageState extends State<RincianPesananPage> {
   final LayananApi _api = LayananApi();
   late Future<Order> _futureDetail;
+  bool _isConfirmingPayment = false;
 
   @override
   void initState() {
     super.initState();
-    _futureDetail = _api.fetchPesananDetail(widget.pesananId);
+    _loadDetail();
+  }
+
+  void _loadDetail() {
+    _futureDetail = widget.isPengelola
+        ? _api.fetchPesananDetailPengelola(widget.pesananId)
+        : _api.fetchPesananDetail(widget.pesananId);
   }
 
   void _reload() {
     setState(() {
-      _futureDetail = _api.fetchPesananDetail(widget.pesananId);
+      _loadDetail();
     });
   }
 
-  String _formatErrorMessage(Object error) {
-    final str = error.toString();
-    if (str.contains('SocketException') ||
-        str.contains('NetworkException') ||
-        str.contains('Failed host lookup') ||
-        str.contains('ClientException')) {
-      return 'Gagal terhubung ke server ATK Mart.\nPastikan backend Laravel berjalan di http://127.0.0.1:8000.';
+  Future<void> _konfirmasiPembayaran(Order order) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Konfirmasi Pembayaran'),
+        content: Text(
+          'Konfirmasi bahwa pembayaran untuk pesanan "${order.nomorPesanan}" '
+          'senilai ${_formatRupiah(order.total)} telah diterima?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2E9E5B),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Konfirmasi'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isConfirmingPayment = true);
+
+    try {
+      await _api.updateStatusPesananPengelola(
+        id: order.id,
+        status: 'dibayar',
+        catatan: 'Pembayaran dikonfirmasi oleh pengelola',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Pembayaran pesanan ${order.nomorPesanan} berhasil dikonfirmasi.'),
+          backgroundColor: const Color(0xFF2E9E5B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _reload();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_formatErrorMessage(e)),
+          backgroundColor: const Color(0xFFE14B4B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isConfirmingPayment = false);
+      }
     }
-    if (str.contains('RequestTimeoutException') || str.contains('15s')) {
-      return 'Permintaan ke server melebihi batas waktu (15 detik). Silakan coba lagi.';
-    }
-    if (str.contains('404')) {
-      return 'Pesanan dengan ID #${widget.pesananId} tidak ditemukan di server.';
-    }
-    if (str.contains('403')) {
-      return 'Akses ditolak: Anda tidak memiliki wewenang untuk melihat pesanan ini.';
-    }
-    if (str.contains('ApiException')) {
-      return str.replaceAll('ApiException:', '').trim();
-    }
-    return 'Terjadi kendala saat memuat rincian pesanan: $error';
   }
+
+  Future<void> _laporkanSudahBayar(Order order) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Konfirmasi Pembayaran'),
+        content: Text(
+          'Apakah Anda sudah melakukan transfer sebesar ${_formatRupiah(order.total)} '
+          'untuk pesanan "${order.nomorPesanan}"?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Belum'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2F6BFF),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Ya, Sudah Bayar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isConfirmingPayment = true);
+
+    try {
+      await _api.updateStatusPesanan(
+        id: order.id,
+        status: 'menunggu_konfirmasi',
+        catatan: 'Pembeli mengonfirmasi pembayaran telah ditransfer',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Konfirmasi pembayaran berhasil dikirim! Menunggu verifikasi dari pengelola toko.',
+          ),
+          backgroundColor: Color(0xFF2E9E5B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _reload();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_formatErrorMessage(e)),
+          backgroundColor: const Color(0xFFE14B4B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isConfirmingPayment = false);
+      }
+    }
+  }
+
+  String _formatErrorMessage(Object error) => formatAppErrorMessage(error);
 
   Widget _buildSectionCard({
     required String title,
@@ -3360,6 +3602,16 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
 
           final items = order.items ?? [];
           final histories = order.riwayatStatus ?? [];
+
+          final rawMetode = (order.metodePembayaran ?? '').toLowerCase();
+          final isCod = rawMetode.contains('cod') || rawMetode.contains('tunai');
+          final isTransfer = !isCod &&
+              (rawMetode.contains('transfer') ||
+                  rawMetode.contains('manual') ||
+                  rawMetode.contains('bank'));
+          final canBuyerConfirmPayment = !widget.isPengelola &&
+              order.status == 'menunggu_pembayaran' &&
+              isTransfer;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -3837,6 +4089,165 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                   ),
                 ],
 
+                if (widget.isPengelola && order.status == 'menunggu_konfirmasi') ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEAF5EF),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: const Color(0xFF2E9E5B).withValues(alpha: 0.5),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.verified_outlined,
+                                color: Color(0xFF2E9E5B), size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              'Aksi Pengelola: Konfirmasi Pembayaran',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF2E9E5B),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Pembeli telah melaporkan pembayaran. Tekan tombol di bawah untuk memverifikasi dan mengubah status menjadi "dibayar".',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF15151A),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2E9E5B),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            icon: _isConfirmingPayment
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor:
+                                          AlwaysStoppedAnimation(Colors.white),
+                                    ),
+                                  )
+                                : const Icon(Icons.check_circle_outline),
+                            label: Text(
+                              _isConfirmingPayment
+                                  ? 'Memproses...'
+                                  : 'Konfirmasi Pembayaran',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            onPressed: _isConfirmingPayment
+                                ? null
+                                : () => _konfirmasiPembayaran(order),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                if (canBuyerConfirmPayment) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEBF1FF),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: const Color(0xFF2F6BFF).withValues(alpha: 0.5),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.payment,
+                                color: Color(0xFF2F6BFF), size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              'Konfirmasi Pembayaran Transfer',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF2F6BFF),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Silakan transfer sebesar ${_formatRupiah(order.total)} ke rekening toko. '
+                          'Setelah transfer selesai, tekan tombol di bawah untuk melaporkan pembayaran.',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF15151A),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2F6BFF),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            icon: _isConfirmingPayment
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor:
+                                          AlwaysStoppedAnimation(Colors.white),
+                                    ),
+                                  )
+                                : const Icon(Icons.check_circle_outline),
+                            label: Text(
+                              _isConfirmingPayment
+                                  ? 'Mengirim...'
+                                  : 'Saya Sudah Bayar',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            onPressed: _isConfirmingPayment
+                                ? null
+                                : () => _laporkanSudahBayar(order),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
                 const SizedBox(height: 24),
               ],
             ),
@@ -3880,25 +4291,7 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
     });
   }
 
-  String _formatErrorMessage(Object error) {
-    final str = error.toString();
-    if (str.contains('SocketException') ||
-        str.contains('NetworkException') ||
-        str.contains('Failed host lookup') ||
-        str.contains('ClientException')) {
-      return 'Gagal terhubung ke server.\nPastikan backend Laravel berjalan di http://127.0.0.1:8000.';
-    }
-    if (str.contains('RequestTimeoutException')) {
-      return 'Permintaan ke server melebihi batas waktu (15 detik). Silakan coba lagi.';
-    }
-    if (str.contains('Token autentikasi belum dikonfigurasi')) {
-      return 'Token pengelola belum dikonfigurasi.\nPastikan token_pengelola sudah diisi di assets/config/env.json.';
-    }
-    if (str.contains('ApiException')) {
-      return str.replaceAll('ApiException:', '').trim();
-    }
-    return 'Terjadi kendala: $error';
-  }
+  String _formatErrorMessage(Object error) => formatAppErrorMessage(error);
 
   Future<void> _hapusProduk(Product produk) async {
     final confirmed = await showDialog<bool>(
@@ -3954,7 +4347,7 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal menghapus produk: $e'),
+          content: Text(formatAppErrorMessage(e)),
           backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
@@ -3980,6 +4373,16 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
       appBar: AppBar(
         title: const Text('Kelola Produk'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.receipt_long_outlined),
+            tooltip: 'Kelola Pesanan',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const KelolaPesananPage()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Segarkan',
@@ -4255,6 +4658,7 @@ class _FormProdukPageState extends State<FormProdukPage> {
   final List<Map<String, TextEditingController>> _grosirTiers = [];
 
   bool _isSubmitting = false;
+  Map<String, String> _fieldErrors = {};
 
   static const List<String> _kategoriOptions = [
     'Alat Tulis',
@@ -4364,7 +4768,10 @@ class _FormProdukPageState extends State<FormProdukPage> {
       }
     }
 
-    setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+      _fieldErrors.clear();
+    });
 
     final hargaGrosirPayload = _grosirTiers.map((t) {
       return {
@@ -4412,12 +4819,22 @@ class _FormProdukPageState extends State<FormProdukPage> {
       Navigator.pop(context, true);
     } on ValidationException catch (e) {
       if (!mounted) return;
+      setState(() {
+        _fieldErrors = e.errors.map((key, val) {
+          if (val is List && val.isNotEmpty) {
+            return MapEntry(key, val.first.toString());
+          }
+          return MapEntry(key, val.toString());
+        });
+      });
       final msg = e.errors.values
           .expand((item) => item is List ? item : [item])
           .join(', ');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(msg.isNotEmpty ? msg : e.message),
+          content: Text(msg.isNotEmpty
+              ? 'Validasi gagal: $msg'
+              : formatAppErrorMessage(e)),
           backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
@@ -4435,7 +4852,7 @@ class _FormProdukPageState extends State<FormProdukPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal terhubung ke server: ${e.message}'),
+          content: Text(formatAppErrorMessage(e)),
           backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
@@ -4444,7 +4861,7 @@ class _FormProdukPageState extends State<FormProdukPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Terjadi kesalahan: $e'),
+          content: Text(formatAppErrorMessage(e)),
           backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
@@ -4475,12 +4892,18 @@ class _FormProdukPageState extends State<FormProdukPage> {
                   children: [
                     TextFormField(
                       controller: _namaCtrl,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Nama Produk *',
                         hintText: 'Contoh: Pensil 2B Faber-Castell',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.label_outlined),
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.label_outlined),
+                        errorText: _fieldErrors['nama'],
                       ),
+                      onChanged: (_) {
+                        if (_fieldErrors.containsKey('nama')) {
+                          setState(() => _fieldErrors.remove('nama'));
+                        }
+                      },
                       validator: (val) {
                         if (val == null || val.trim().isEmpty) {
                           return 'Nama produk wajib diisi';
@@ -4494,17 +4917,23 @@ class _FormProdukPageState extends State<FormProdukPage> {
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       initialValue: _selectedKategori,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Kategori *',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.category_outlined),
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.category_outlined),
+                        errorText: _fieldErrors['kategori'],
                       ),
                       items: _kategoriOptions.map((k) {
                         return DropdownMenuItem(value: k, child: Text(k));
                       }).toList(),
                       onChanged: (val) {
                         if (val != null) {
-                          setState(() => _selectedKategori = val);
+                          setState(() {
+                            _selectedKategori = val;
+                            if (_fieldErrors.containsKey('kategori')) {
+                              _fieldErrors.remove('kategori');
+                            }
+                          });
                         }
                       },
                       validator: (val) =>
@@ -4514,13 +4943,19 @@ class _FormProdukPageState extends State<FormProdukPage> {
                     TextFormField(
                       controller: _deskripsiCtrl,
                       maxLines: 3,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Deskripsi (opsional)',
                         hintText: 'Deskripsi singkat produk...',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.description_outlined),
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.description_outlined),
                         alignLabelWithHint: true,
+                        errorText: _fieldErrors['deskripsi'],
                       ),
+                      onChanged: (_) {
+                        if (_fieldErrors.containsKey('deskripsi')) {
+                          setState(() => _fieldErrors.remove('deskripsi'));
+                        }
+                      },
                     ),
                   ],
                 ),
@@ -4538,12 +4973,18 @@ class _FormProdukPageState extends State<FormProdukPage> {
                       child: TextFormField(
                         controller: _hargaCtrl,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Harga Normal (Rp) *',
                           hintText: '5000',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.attach_money),
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.attach_money),
+                          errorText: _fieldErrors['harga'],
                         ),
+                        onChanged: (_) {
+                          if (_fieldErrors.containsKey('harga')) {
+                            setState(() => _fieldErrors.remove('harga'));
+                          }
+                        },
                         validator: (val) {
                           if (val == null || val.trim().isEmpty) {
                             return 'Harga wajib diisi';
@@ -4561,12 +5002,18 @@ class _FormProdukPageState extends State<FormProdukPage> {
                       child: TextFormField(
                         controller: _stokCtrl,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Stok (unit) *',
                           hintText: '0',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.inventory_2_outlined),
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.inventory_2_outlined),
+                          errorText: _fieldErrors['stok'],
                         ),
+                        onChanged: (_) {
+                          if (_fieldErrors.containsKey('stok')) {
+                            setState(() => _fieldErrors.remove('stok'));
+                          }
+                        },
                         validator: (val) {
                           if (val == null || val.trim().isEmpty) {
                             return 'Stok wajib diisi';
@@ -4630,13 +5077,19 @@ class _FormProdukPageState extends State<FormProdukPage> {
                       const SizedBox(height: 10),
                       TextFormField(
                         controller: _estimasiCtrl,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Estimasi Tanggal Tersedia (opsional)',
                           hintText: 'Contoh: 2026-12-31',
                           helperText: 'Format: YYYY-MM-DD',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.calendar_today_outlined),
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.calendar_today_outlined),
+                          errorText: _fieldErrors['estimasi_tersedia'],
                         ),
+                        onChanged: (_) {
+                          if (_fieldErrors.containsKey('estimasi_tersedia')) {
+                            setState(() => _fieldErrors.remove('estimasi_tersedia'));
+                          }
+                        },
                         validator: (val) {
                           if (!_preOrder || val == null || val.trim().isEmpty) {
                             return null;
@@ -4830,6 +5283,538 @@ class _FormProdukPageState extends State<FormProdukPage> {
         border: Border.all(color: const Color(0xFFE6E6EC), width: 0.8),
       ),
       child: child,
+    );
+  }
+}
+
+// ===========================================================================
+// PAKET B.1 — KELOLA PESANAN ADMIN & KONFIRMASI PEMBAYARAN
+// GET /api/pesanan (seluruh pesanan via header pengelola)
+// PATCH /api/pesanan/{id}/status (konfirmasi status 'dibayar' oleh pengelola)
+// ===========================================================================
+
+class KelolaPesananPage extends StatefulWidget {
+  const KelolaPesananPage({super.key});
+
+  @override
+  State<KelolaPesananPage> createState() => _KelolaPesananPageState();
+}
+
+class _KelolaPesananPageState extends State<KelolaPesananPage> {
+  final LayananApi _api = LayananApi();
+  late Future<List<Order>> _futurePesanan;
+  String _selectedStatus = 'semua';
+  int? _updatingOrderId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPesanan();
+  }
+
+  void _loadPesanan() {
+    _futurePesanan = _api.fetchPesananPengelola();
+  }
+
+  void _reload() {
+    setState(() {
+      _loadPesanan();
+    });
+  }
+
+  String _formatErrorMessage(Object error) => formatAppErrorMessage(error);
+
+  Future<void> _konfirmasiPembayaran(Order order) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Konfirmasi Pembayaran'),
+        content: Text(
+          'Konfirmasi bahwa pembayaran untuk pesanan "${order.nomorPesanan}" '
+          'sebesar ${_formatRupiah(order.total)} telah diterima oleh pengelola?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2E9E5B),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Konfirmasi'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _updatingOrderId = order.id);
+
+    try {
+      await _api.updateStatusPesananPengelola(
+        id: order.id,
+        status: 'dibayar',
+        catatan: 'Pembayaran dikonfirmasi oleh pengelola',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Pembayaran pesanan ${order.nomorPesanan} berhasil dikonfirmasi menjadi "dibayar".',
+          ),
+          backgroundColor: const Color(0xFF2E9E5B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _reload();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_formatErrorMessage(e)),
+          backgroundColor: const Color(0xFFE14B4B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _updatingOrderId = null);
+      }
+    }
+  }
+
+  List<Order> _applyFilter(List<Order> orders) {
+    if (_selectedStatus == 'semua') return orders;
+    return orders.where((o) => o.status == _selectedStatus).toList();
+  }
+
+  Widget _buildFilterChip(String label, String value, int count) {
+    final isSelected = _selectedStatus == value;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0),
+      child: ChoiceChip(
+        label: Text('$label ($count)'),
+        selected: isSelected,
+        selectedColor: const Color(0xFF2F6BFF),
+        backgroundColor: const Color(0xFFEDEDF2),
+        labelStyle: TextStyle(
+          color: isSelected ? Colors.white : const Color(0xFF15151A),
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          fontSize: 12,
+        ),
+        onSelected: (_) {
+          setState(() {
+            _selectedStatus = value;
+          });
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Kelola Pesanan'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.inventory_2_outlined),
+            tooltip: 'Kelola Produk',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const KelolaProdukPage()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Segarkan',
+            onPressed: _updatingOrderId != null ? null : _reload,
+          ),
+        ],
+      ),
+      body: FutureBuilder<List<Order>>(
+        future: _futurePesanan,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline,
+                        size: 48, color: Color(0xFFE14B4B)),
+                    const SizedBox(height: 12),
+                    Text(
+                      _formatErrorMessage(snapshot.error!),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontSize: 14, color: Color(0xFF15151A)),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2F6BFF),
+                        foregroundColor: Colors.white,
+                      ),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Coba Lagi'),
+                      onPressed: _reload,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          final allOrders = snapshot.data ?? [];
+          if (allOrders.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.inbox_outlined,
+                        size: 64, color: Color(0xFF8A8A93)),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Belum Ada Pesanan Masuk',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF15151A),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Seluruh pesanan dari pembeli akan tercatat di halaman ini.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 13, color: Color(0xFF8A8A93)),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Segarkan'),
+                      onPressed: _reload,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          final filteredOrders = _applyFilter(allOrders);
+
+          // Hitung jumlah per status untuk filter bar
+          final countSemua = allOrders.length;
+          final countMenungguKonfirmasi =
+              allOrders.where((o) => o.status == 'menunggu_konfirmasi').length;
+          final countMenungguPembayaran =
+              allOrders.where((o) => o.status == 'menunggu_pembayaran').length;
+          final countDibayar =
+              allOrders.where((o) => o.status == 'dibayar').length;
+          final countDiproses =
+              allOrders.where((o) => o.status == 'diproses').length;
+          final countDikirim =
+              allOrders.where((o) => o.status == 'dikirim').length;
+          final countSelesai =
+              allOrders.where((o) => o.status == 'selesai').length;
+          final countDibatalkan =
+              allOrders.where((o) => o.status == 'dibatalkan').length;
+
+          return Column(
+            children: [
+              // 1. Bilah Filter Status
+              Container(
+                color: Colors.white,
+                width: double.infinity,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Row(
+                    children: [
+                      _buildFilterChip('Semua', 'semua', countSemua),
+                      _buildFilterChip('Menunggu Konfirmasi',
+                          'menunggu_konfirmasi', countMenungguKonfirmasi),
+                      _buildFilterChip('Menunggu Pembayaran',
+                          'menunggu_pembayaran', countMenungguPembayaran),
+                      _buildFilterChip('Dibayar', 'dibayar', countDibayar),
+                      _buildFilterChip('Diproses', 'diproses', countDiproses),
+                      _buildFilterChip('Dikirim', 'dikirim', countDikirim),
+                      _buildFilterChip('Selesai', 'selesai', countSelesai),
+                      _buildFilterChip(
+                          'Dibatalkan', 'dibatalkan', countDibatalkan),
+                    ],
+                  ),
+                ),
+              ),
+              const Divider(height: 1, color: Color(0xFFE6E6EC)),
+
+              // 2. Daftar Kartu Pesanan
+              Expanded(
+                child: filteredOrders.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Tidak ada pesanan dengan status "$_selectedStatus".',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF8A8A93),
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: filteredOrders.length,
+                        itemBuilder: (context, index) {
+                          final order = filteredOrders[index];
+                          final isMenungguKonfirmasi =
+                              order.status == 'menunggu_konfirmasi';
+                          final isProcessingThis =
+                              _updatingOrderId == order.id;
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: isMenungguKonfirmasi
+                                    ? const Color(0xFFE0A32E)
+                                        .withValues(alpha: 0.6)
+                                    : const Color(0xFFE6E6EC),
+                                width: isMenungguKonfirmasi ? 1.4 : 0.8,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.03),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(14),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(14),
+                                onTap: () async {
+                                  await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => RincianPesananPage(
+                                        pesananId: order.id,
+                                        nomorPesanan: order.nomorPesanan,
+                                        isPengelola: true,
+                                      ),
+                                    ),
+                                  );
+                                  _reload();
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      // Baris 1: Nomor Pesanan & Badge Status
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              order.nomorPesanan,
+                                              style: const TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF15151A),
+                                              ),
+                                            ),
+                                          ),
+                                          _buildOrderStatusBadge(order.status),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 10),
+
+                                      // Baris 2: Data Pembeli & Tanggal
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.person_outline,
+                                              size: 16,
+                                              color: Color(0xFF8A8A93)),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            order.namaPenerima ?? 'Pembeli',
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF15151A),
+                                            ),
+                                          ),
+                                          const Spacer(),
+                                          if (order.createdAt != null) ...[
+                                            const Icon(Icons.access_time,
+                                                size: 14,
+                                                color: Color(0xFF8A8A93)),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              order.createdAt!,
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                color: Color(0xFF8A8A93),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+
+                                      // Baris 3: Metode Pembayaran & Total
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.payment_outlined,
+                                              size: 16,
+                                              color: Color(0xFF8A8A93)),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            (order.metodePembayaran ?? '-')
+                                                .replaceAll('_', ' ')
+                                                .toUpperCase(),
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              color: Color(0xFF8A8A93),
+                                            ),
+                                          ),
+                                          const Spacer(),
+                                          Text(
+                                            _formatRupiah(order.total),
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF2F6BFF),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+
+                                      // Baris 4: Aksi Khusus Pengelola
+                                      if (isMenungguKonfirmasi) ...[
+                                        const SizedBox(height: 14),
+                                        const Divider(
+                                            height: 1,
+                                            color: Color(0xFFE6E6EC)),
+                                        const SizedBox(height: 12),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: ElevatedButton.icon(
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor:
+                                                      const Color(0xFF2E9E5B),
+                                                  foregroundColor: Colors.white,
+                                                  padding: const EdgeInsets
+                                                      .symmetric(vertical: 10),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            10),
+                                                  ),
+                                                ),
+                                                icon: isProcessingThis
+                                                    ? const SizedBox(
+                                                        width: 16,
+                                                        height: 16,
+                                                        child:
+                                                            CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                          valueColor:
+                                                              AlwaysStoppedAnimation(
+                                                                  Colors.white),
+                                                        ),
+                                                      )
+                                                    : const Icon(
+                                                        Icons
+                                                            .check_circle_outline,
+                                                        size: 18),
+                                                label: Text(
+                                                  isProcessingThis
+                                                      ? 'Memproses...'
+                                                      : 'Konfirmasi Pembayaran',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                                onPressed: isProcessingThis
+                                                    ? null
+                                                    : () =>
+                                                        _konfirmasiPembayaran(
+                                                            order),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            OutlinedButton(
+                                              style: OutlinedButton.styleFrom(
+                                                foregroundColor:
+                                                    const Color(0xFF2F6BFF),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        vertical: 10,
+                                                        horizontal: 14),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                              ),
+                                              onPressed: () async {
+                                                await Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (_) =>
+                                                        RincianPesananPage(
+                                                      pesananId: order.id,
+                                                      nomorPesanan:
+                                                          order.nomorPesanan,
+                                                      isPengelola: true,
+                                                    ),
+                                                  ),
+                                                );
+                                                _reload();
+                                              },
+                                              child: const Text('Detail',
+                                                  style: TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight:
+                                                          FontWeight.w600)),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }
