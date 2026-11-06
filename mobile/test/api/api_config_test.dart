@@ -50,5 +50,14 @@ void main() {
       expect(headers['Authorization'], 'Bearer test-token');
       expect(headers['X-Custom'], 'Value');
     });
+
+    test('pengelolaHeaders uses token pengelola or custom override', () {
+      ApiConfig.setCustomToken('pengelola-custom');
+      expect(ApiConfig.tokenPengelola, 'pengelola-custom');
+      final headers = ApiConfig.pengelolaHeaders();
+      expect(headers['Authorization'], 'Bearer pengelola-custom');
+      expect(headers['Content-Type'], 'application/json');
+      expect(headers['Accept'], 'application/json');
+    });
   });
 }

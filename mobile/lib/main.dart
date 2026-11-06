@@ -307,6 +307,16 @@ class _ProdukListPageState extends State<ProdukListPage> {
             },
           ),
           IconButton(
+            icon: const Icon(Icons.admin_panel_settings_outlined),
+            tooltip: 'Kelola Produk (Pengelola)',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const KelolaProdukPage()),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Segarkan',
             onPressed: _reload,
@@ -3833,6 +3843,993 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
           );
         },
       ),
+    );
+  }
+}
+
+
+// ===========================================================================
+// PAKET 3 — KELOLA PRODUK (Pengelola/Admin)
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// KelolaProdukPage: Daftar Produk Versi Pengelola
+// GET /api/produk (semua produk); POST, PUT, DELETE /api/produk
+// ---------------------------------------------------------------------------
+class KelolaProdukPage extends StatefulWidget {
+  const KelolaProdukPage({super.key});
+
+  @override
+  State<KelolaProdukPage> createState() => _KelolaProdukPageState();
+}
+
+class _KelolaProdukPageState extends State<KelolaProdukPage> {
+  final LayananApi _api = LayananApi();
+  late Future<List<Product>> _futureProduk;
+  bool _isDeleting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _futureProduk = _api.fetchProduk();
+  }
+
+  void _reload() {
+    setState(() {
+      _futureProduk = _api.fetchProduk();
+    });
+  }
+
+  String _formatErrorMessage(Object error) {
+    final str = error.toString();
+    if (str.contains('SocketException') ||
+        str.contains('NetworkException') ||
+        str.contains('Failed host lookup') ||
+        str.contains('ClientException')) {
+      return 'Gagal terhubung ke server.\nPastikan backend Laravel berjalan di http://127.0.0.1:8000.';
+    }
+    if (str.contains('RequestTimeoutException')) {
+      return 'Permintaan ke server melebihi batas waktu (15 detik). Silakan coba lagi.';
+    }
+    if (str.contains('Token autentikasi belum dikonfigurasi')) {
+      return 'Token pengelola belum dikonfigurasi.\nPastikan token_pengelola sudah diisi di assets/config/env.json.';
+    }
+    if (str.contains('ApiException')) {
+      return str.replaceAll('ApiException:', '').trim();
+    }
+    return 'Terjadi kendala: $error';
+  }
+
+  Future<void> _hapusProduk(Product produk) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Produk'),
+        content: Text(
+          'Yakin ingin menghapus "${produk.nama}"?\n\n'
+          'Produk yang masih terkait dengan pesanan aktif tidak dapat dihapus.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE14B4B),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isDeleting = true);
+
+    try {
+      await _api.deleteProduk(produk.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('"${produk.nama}" berhasil dihapus.'),
+          backgroundColor: const Color(0xFF2E9E5B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _reload();
+    } on ConflictException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          backgroundColor: const Color(0xFFE14B4B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal menghapus produk: $e'),
+          backgroundColor: const Color(0xFFE14B4B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isDeleting = false);
+    }
+  }
+
+  Future<void> _bukaFormProduk({Product? produk}) async {
+    final hasil = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FormProdukPage(produk: produk),
+      ),
+    );
+    if (hasil == true) _reload();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Kelola Produk'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Segarkan',
+            onPressed: _isDeleting ? null : _reload,
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _isDeleting ? null : () => _bukaFormProduk(),
+        icon: const Icon(Icons.add),
+        label: const Text('Tambah Produk'),
+        backgroundColor: const Color(0xFF2F6BFF),
+        foregroundColor: Colors.white,
+      ),
+      body: FutureBuilder<List<Product>>(
+        future: _futureProduk,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline,
+                        size: 48, color: Color(0xFFE14B4B)),
+                    const SizedBox(height: 12),
+                    Text(
+                      _formatErrorMessage(snapshot.error!),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontSize: 14, color: Color(0xFF15151A)),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2F6BFF),
+                        foregroundColor: Colors.white,
+                      ),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Coba Lagi'),
+                      onPressed: _reload,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          final produkList = snapshot.data ?? [];
+
+          if (produkList.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.inventory_2_outlined,
+                        size: 64, color: Colors.grey.shade400),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Belum Ada Produk',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF15151A),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Tekan tombol "+ Tambah Produk" untuk menambahkan produk pertama.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontSize: 13, color: Colors.grey.shade600),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+            itemCount: produkList.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
+            itemBuilder: (context, index) {
+              final p = produkList[index];
+              return Card(
+                color: Colors.white,
+                elevation: 0.8,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: const BorderSide(
+                      color: Color(0xFFE6E6EC), width: 0.8),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Baris atas: Nama + badge status
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  p.nama,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF15151A),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  p.kategori,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF8A8A93),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _buildProdukStatusBadge(p),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      // Baris tengah: Harga, Stok
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _formatRupiah(p.harga),
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF2F6BFF),
+                                  ),
+                                ),
+                                Text(
+                                  'Stok: ${p.stok} unit',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                                if (p.hargaGrosir.isNotEmpty)
+                                  Text(
+                                    'Grosir: ${p.hargaGrosir.length} tier',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Color(0xFF2F6BFF),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          // Tombol aksi
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined,
+                                    size: 20, color: Color(0xFF2F6BFF)),
+                                tooltip: 'Edit Produk',
+                                onPressed: _isDeleting
+                                    ? null
+                                    : () => _bukaFormProduk(produk: p),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline,
+                                    size: 20, color: Color(0xFFE14B4B)),
+                                tooltip: 'Hapus Produk',
+                                onPressed: _isDeleting
+                                    ? null
+                                    : () => _hapusProduk(p),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildProdukStatusBadge(Product p) {
+    if (!p.tersedia) {
+      return _adminBadge('Nonaktif', const Color(0xFFF5F5F7),
+          Colors.grey.shade400, Colors.grey.shade700);
+    }
+    if (p.preOrder) {
+      return _adminBadge('Pre-Order', const Color(0xFFFFF3D6),
+          const Color(0xFFE0A32E), const Color(0xFF946200));
+    }
+    if (p.stok == 0) {
+      return _adminBadge('Stok Habis', const Color(0xFFFFEBEB),
+          const Color(0xFFE14B4B), const Color(0xFFB42323));
+    }
+    return _adminBadge('Aktif', const Color(0xFFEBF8EE),
+        const Color(0xFF2E9E5B), const Color(0xFF2E9E5B));
+  }
+
+  Widget _adminBadge(
+      String label, Color bg, Color borderColor, Color textColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: borderColor, width: 0.8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: textColor,
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// FormProdukPage: Form Tambah / Edit Produk
+// POST /api/produk (tambah) | PUT /api/produk/{id} (edit)
+// ---------------------------------------------------------------------------
+class FormProdukPage extends StatefulWidget {
+  /// Jika null, mode Tambah; jika berisi data, mode Edit.
+  final Product? produk;
+
+  const FormProdukPage({this.produk, super.key});
+
+  @override
+  State<FormProdukPage> createState() => _FormProdukPageState();
+}
+
+class _FormProdukPageState extends State<FormProdukPage> {
+  final LayananApi _api = LayananApi();
+  final _formKey = GlobalKey<FormState>();
+
+  late final TextEditingController _namaCtrl;
+  late final TextEditingController _hargaCtrl;
+  late final TextEditingController _stokCtrl;
+  late final TextEditingController _deskripsiCtrl;
+  late final TextEditingController _estimasiCtrl;
+
+  String _selectedKategori = 'Alat Tulis';
+  bool _tersedia = true;
+  bool _preOrder = false;
+
+  // Daftar tier harga grosir yang bisa ditambah/hapus
+  final List<Map<String, TextEditingController>> _grosirTiers = [];
+
+  bool _isSubmitting = false;
+
+  static const List<String> _kategoriOptions = [
+    'Alat Tulis',
+    'Buku & Perlengkapan Belajar',
+  ];
+
+  bool get _isEditMode => widget.produk != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final p = widget.produk;
+    _namaCtrl = TextEditingController(text: p?.nama ?? '');
+    _hargaCtrl = TextEditingController(text: p != null ? '${p.harga}' : '');
+    _stokCtrl = TextEditingController(text: p != null ? '${p.stok}' : '');
+    _deskripsiCtrl = TextEditingController(text: p?.deskripsi ?? '');
+    _estimasiCtrl =
+        TextEditingController(text: p?.estimasiTersedia ?? '');
+
+    if (p != null) {
+      _selectedKategori = p.kategori;
+      _tersedia = p.tersedia;
+      _preOrder = p.preOrder;
+      // Pre-fill grosir tiers
+      for (final tier in p.hargaGrosir) {
+        _grosirTiers.add({
+          'min': TextEditingController(text: '${tier.minKuantitas}'),
+          'harga': TextEditingController(text: '${tier.hargaSatuan}'),
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _namaCtrl.dispose();
+    _hargaCtrl.dispose();
+    _stokCtrl.dispose();
+    _deskripsiCtrl.dispose();
+    _estimasiCtrl.dispose();
+    for (final t in _grosirTiers) {
+      t['min']!.dispose();
+      t['harga']!.dispose();
+    }
+    super.dispose();
+  }
+
+  void _tambahTierGrosir() {
+    setState(() {
+      _grosirTiers.add({
+        'min': TextEditingController(),
+        'harga': TextEditingController(),
+      });
+    });
+  }
+
+  void _hapusTierGrosir(int index) {
+    setState(() {
+      _grosirTiers[index]['min']!.dispose();
+      _grosirTiers[index]['harga']!.dispose();
+      _grosirTiers.removeAt(index);
+    });
+  }
+
+  Future<void> _submit() async {
+    if (_isSubmitting) return;
+    if (!_formKey.currentState!.validate()) return;
+
+    // Validasi tier grosir
+    for (int i = 0; i < _grosirTiers.length; i++) {
+      final minText = _grosirTiers[i]['min']!.text.trim();
+      final hargaText = _grosirTiers[i]['harga']!.text.trim();
+      if (minText.isEmpty || hargaText.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text('Tier grosir ke-${i + 1}: min kuantitas dan harga wajib diisi.'),
+            backgroundColor: const Color(0xFFE14B4B),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+      final minVal = int.tryParse(minText);
+      final hargaVal = int.tryParse(hargaText);
+      if (minVal == null || minVal < 2) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Tier grosir ke-${i + 1}: min kuantitas harus angka >= 2.'),
+            backgroundColor: const Color(0xFFE14B4B),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+      if (hargaVal == null || hargaVal < 1) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text('Tier grosir ke-${i + 1}: harga satuan harus angka >= 1.'),
+            backgroundColor: const Color(0xFFE14B4B),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+    }
+
+    setState(() => _isSubmitting = true);
+
+    final hargaGrosirPayload = _grosirTiers.map((t) {
+      return {
+        'min_kuantitas': int.parse(t['min']!.text.trim()),
+        'harga_satuan': int.parse(t['harga']!.text.trim()),
+      };
+    }).toList();
+
+    final payload = <String, dynamic>{
+      'nama': _namaCtrl.text.trim(),
+      'harga': int.parse(_hargaCtrl.text.trim()),
+      'kategori': _selectedKategori,
+      'stok': int.parse(_stokCtrl.text.trim()),
+      'tersedia': _tersedia,
+      'deskripsi': _deskripsiCtrl.text.trim().isEmpty
+          ? null
+          : _deskripsiCtrl.text.trim(),
+      'pre_order': _preOrder,
+      'estimasi_tersedia': (!_preOrder ||
+              _estimasiCtrl.text.trim().isEmpty)
+          ? null
+          : _estimasiCtrl.text.trim(),
+      'harga_grosir': hargaGrosirPayload,
+    };
+
+    try {
+      if (_isEditMode) {
+        await _api.updateProduk(widget.produk!.id, payload);
+      } else {
+        await _api.createProduk(payload);
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isEditMode
+                ? 'Produk "${payload['nama']}" berhasil diperbarui.'
+                : 'Produk "${payload['nama']}" berhasil ditambahkan.',
+          ),
+          backgroundColor: const Color(0xFF2E9E5B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      Navigator.pop(context, true);
+    } on ValidationException catch (e) {
+      if (!mounted) return;
+      final msg = e.errors.values
+          .expand((item) => item is List ? item : [item])
+          .join(', ');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg.isNotEmpty ? msg : e.message),
+          backgroundColor: const Color(0xFFE14B4B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } on RequestTimeoutException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Koneksi timeout. Silakan coba lagi.'),
+          backgroundColor: Color(0xFFE14B4B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } on NetworkException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal terhubung ke server: ${e.message}'),
+          backgroundColor: const Color(0xFFE14B4B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Terjadi kesalahan: $e'),
+          backgroundColor: const Color(0xFFE14B4B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_isEditMode ? 'Edit Produk' : 'Tambah Produk'),
+      ),
+      body: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // === Section: Informasi Dasar ===
+              _sectionTitle('Informasi Dasar', Icons.inventory_outlined),
+              const SizedBox(height: 10),
+              _sectionCard(
+                child: Column(
+                  children: [
+                    TextFormField(
+                      controller: _namaCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Nama Produk *',
+                        hintText: 'Contoh: Pensil 2B Faber-Castell',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.label_outlined),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) {
+                          return 'Nama produk wajib diisi';
+                        }
+                        if (val.trim().length > 255) {
+                          return 'Nama produk maksimal 255 karakter';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: _selectedKategori,
+                      decoration: const InputDecoration(
+                        labelText: 'Kategori *',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.category_outlined),
+                      ),
+                      items: _kategoriOptions.map((k) {
+                        return DropdownMenuItem(value: k, child: Text(k));
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _selectedKategori = val);
+                        }
+                      },
+                      validator: (val) =>
+                          val == null ? 'Kategori wajib dipilih' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _deskripsiCtrl,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Deskripsi (opsional)',
+                        hintText: 'Deskripsi singkat produk...',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.description_outlined),
+                        alignLabelWithHint: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // === Section: Harga & Stok ===
+              _sectionTitle('Harga & Stok', Icons.price_change_outlined),
+              const SizedBox(height: 10),
+              _sectionCard(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _hargaCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Harga Normal (Rp) *',
+                          hintText: '5000',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.attach_money),
+                        ),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Harga wajib diisi';
+                          }
+                          final v = int.tryParse(val.trim());
+                          if (v == null || v < 1) {
+                            return 'Harga harus angka >= 1';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _stokCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Stok (unit) *',
+                          hintText: '0',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.inventory_2_outlined),
+                        ),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Stok wajib diisi';
+                          }
+                          final v = int.tryParse(val.trim());
+                          if (v == null || v < 0) {
+                            return 'Stok harus angka >= 0';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // === Section: Status Produk ===
+              _sectionTitle('Status & Ketersediaan', Icons.toggle_on_outlined),
+              const SizedBox(height: 10),
+              _sectionCard(
+                child: Column(
+                  children: [
+                    SwitchListTile(
+                      title: const Text(
+                        'Produk Tersedia / Aktif',
+                        style: TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text(
+                        _tersedia
+                            ? 'Produk ini tampil dan bisa dibeli pelanggan'
+                            : 'Produk ini disembunyikan dari pelanggan',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      value: _tersedia,
+                      activeThumbColor: const Color(0xFF2F6BFF),
+                      contentPadding: EdgeInsets.zero,
+                      onChanged: (val) => setState(() => _tersedia = val),
+                    ),
+                    const Divider(height: 8),
+                    SwitchListTile(
+                      title: const Text(
+                        'Mode Pre-Order',
+                        style: TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text(
+                        _preOrder
+                            ? 'Pelanggan bisa memesan meski stok 0'
+                            : 'Hanya bisa dibeli jika stok tersedia',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      value: _preOrder,
+                      activeThumbColor: const Color(0xFFE0A32E),
+                      contentPadding: EdgeInsets.zero,
+                      onChanged: (val) => setState(() => _preOrder = val),
+                    ),
+                    if (_preOrder) ...[
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _estimasiCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Estimasi Tanggal Tersedia (opsional)',
+                          hintText: 'Contoh: 2026-12-31',
+                          helperText: 'Format: YYYY-MM-DD',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.calendar_today_outlined),
+                        ),
+                        validator: (val) {
+                          if (!_preOrder || val == null || val.trim().isEmpty) {
+                            return null;
+                          }
+                          final dateRegex = RegExp(r'^\d{4}-\d{2}-\d{2}$');
+                          if (!dateRegex.hasMatch(val.trim())) {
+                            return 'Format tanggal tidak valid (YYYY-MM-DD)';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // === Section: Harga Grosir ===
+              Row(
+                children: [
+                  Expanded(
+                    child: _sectionTitle(
+                        'Harga Grosir (opsional)', Icons.discount_outlined),
+                  ),
+                  TextButton.icon(
+                    onPressed: _tambahTierGrosir,
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('Tambah Tier'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              if (_grosirTiers.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: const Color(0xFFE6E6EC), width: 0.8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline,
+                          size: 16, color: Colors.grey.shade500),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Belum ada tier grosir.',
+                        style: TextStyle(
+                            fontSize: 13, color: Colors.grey.shade600),
+                      ),
+                    ],
+                  ),
+                ),
+
+              ..._grosirTiers.asMap().entries.map((entry) {
+                final i = entry.key;
+                final tier = entry.value;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: const Color(0xFFBDD3FF), width: 0.8),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: tier['min'],
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'Min Qty Tier ${i + 1}',
+                            hintText: 'misal: 10',
+                            helperText: 'minimal 2',
+                            border: const OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextFormField(
+                          controller: tier['harga'],
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'Harga Satuan Tier ${i + 1}',
+                            hintText: 'misal: 4500',
+                            border: const OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline,
+                            color: Color(0xFFE14B4B)),
+                        tooltip: 'Hapus tier ini',
+                        onPressed: () => _hapusTierGrosir(i),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+
+              const SizedBox(height: 24),
+
+              // === Tombol Submit ===
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0D0D12),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: _isSubmitting ? null : _submit,
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              _isEditMode
+                                  ? Icons.save_outlined
+                                  : Icons.add_circle_outline,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _isEditMode
+                                  ? 'Simpan Perubahan'
+                                  : 'Tambahkan Produk',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: const Color(0xFF2F6BFF)),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF15151A),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _sectionCard({required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE6E6EC), width: 0.8),
+      ),
+      child: child,
     );
   }
 }

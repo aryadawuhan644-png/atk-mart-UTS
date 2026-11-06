@@ -173,7 +173,7 @@ class LayananApi {
   Future<Product> createProduk(Map<String, dynamic> payload) => _request(
         () => _client.post(
           _uri('/produk'),
-          headers: ApiConfig.defaultHeaders(),
+          headers: ApiConfig.pengelolaHeaders(),
           body: jsonEncode(payload),
         ),
         (data) => Product.fromJson(data as Map<String, dynamic>),
@@ -186,7 +186,7 @@ class LayananApi {
       _request(
         () => _client.put(
           _uri('/produk/$id'),
-          headers: ApiConfig.defaultHeaders(),
+          headers: ApiConfig.pengelolaHeaders(),
           body: jsonEncode(payload),
         ),
         (data) => Product.fromJson(data as Map<String, dynamic>),
@@ -198,7 +198,7 @@ class LayananApi {
   // ---------------------------------------------------------------------------
   Future<void> deleteProduk(int id) => _request<void>(
         () => _client.delete(
-            _uri('/produk/$id'), headers: ApiConfig.defaultHeaders()),
+            _uri('/produk/$id'), headers: ApiConfig.pengelolaHeaders()),
         (_) {},
       );
 

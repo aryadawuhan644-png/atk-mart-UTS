@@ -99,12 +99,43 @@ class ApiConfig {
     }
   }
 
-  /// Header default untuk seluruh panggilan REST API.
+  /// Ambil token khusus pengelola secara eksplisit
+  static String get tokenPengelola {
+    if (_overrideToken.isNotEmpty) return _overrideToken;
+    if (_tokenPengelola.isNotEmpty) return _tokenPengelola;
+    return _envStaticToken;
+  }
+
+  /// Ambil token khusus pembeli secara eksplisit
+  static String get tokenPembeli {
+    if (_overrideToken.isNotEmpty) return _overrideToken;
+    if (_tokenPembeli.isNotEmpty) return _tokenPembeli;
+    return _envStaticToken;
+  }
+
+  /// Header default untuk seluruh panggilan REST API (menggunakan role pembeli/default).
   static Map<String, String> defaultHeaders({Map<String, String>? extra}) {
     final token = staticToken;
     if (token.isEmpty) {
       throw StateError(
         'Token autentikasi belum dikonfigurasi. '
+        'Pastikan assets/config/env.json terisi atau gunakan --dart-define=STATIC_TOKEN=...',
+      );
+    }
+    return {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      ...?extra,
+    };
+  }
+
+  /// Header khusus untuk permintaan role pengelola secara eksplisit tanpa mengubah role global.
+  static Map<String, String> pengelolaHeaders({Map<String, String>? extra}) {
+    final token = tokenPengelola;
+    if (token.isEmpty) {
+      throw StateError(
+        'Token pengelola belum dikonfigurasi. '
         'Pastikan assets/config/env.json terisi atau gunakan --dart-define=STATIC_TOKEN=...',
       );
     }
