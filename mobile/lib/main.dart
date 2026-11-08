@@ -20,6 +20,528 @@ void main() async {
   runApp(const AtkMartApp());
 }
 
+// ---------------------------------------------------------------------------
+// Model & Sesi Akun Demo
+// ---------------------------------------------------------------------------
+class DemoAccount {
+  final String id;
+  final String nama;
+  final String subNama;
+  final String email;
+  final String token;
+  final String role; // 'pembeli' or 'pengelola'
+  final String deskripsi;
+  final IconData icon;
+  final Color color;
+
+  const DemoAccount({
+    required this.id,
+    required this.nama,
+    required this.subNama,
+    required this.email,
+    required this.token,
+    required this.role,
+    required this.deskripsi,
+    required this.icon,
+    required this.color,
+  });
+
+  static const DemoAccount pembeli1 = DemoAccount(
+    id: 'pembeli_1',
+    nama: 'Pembeli 1',
+    subNama: 'Pelanggan Demo Utama (ID #1)',
+    email: 'pembeli1@atkmart.id',
+    token: ApiConfig.tokenPembeli1Statis,
+    role: 'pembeli',
+    deskripsi:
+        'Akun pelanggan utama untuk keranjang belanja, checkout, dan riwayat pesanan mandiri.',
+    icon: Icons.person_rounded,
+    color: Color(0xFF2F6BFF),
+  );
+
+  static const DemoAccount pembeli2 = DemoAccount(
+    id: 'pembeli_2',
+    nama: 'Pembeli 2',
+    subNama: 'Pelanggan Demo Kedua (ID #2)',
+    email: 'pembeli2@atkmart.id',
+    token: ApiConfig.tokenPembeli2Statis,
+    role: 'pembeli',
+    deskripsi:
+        'Akun pelanggan terpisah total untuk membuktikan isolasi data keranjang & pesanan antar pelanggan.',
+    icon: Icons.person_outline_rounded,
+    color: Color(0xFF8E44AD),
+  );
+
+  static const DemoAccount pengelola = DemoAccount(
+    id: 'pengelola',
+    nama: 'Pengelola Toko',
+    subNama: 'Administrator ATK Mart',
+    email: 'admin@atkmart.id',
+    token: ApiConfig.tokenPengelolaStatis,
+    role: 'pengelola',
+    deskripsi:
+        'Akses penuh untuk konfirmasi stok, verifikasi pembayaran/COD, dan kelola katalog produk.',
+    icon: Icons.admin_panel_settings_rounded,
+    color: Color(0xFFD97706),
+  );
+
+  static const List<DemoAccount> buyers = [pembeli1, pembeli2];
+}
+
+class SessionPengguna {
+  static DemoAccount? _currentAccount;
+
+  static DemoAccount? get currentAccount => _currentAccount;
+  static bool get isLoggedIn => _currentAccount != null;
+  static bool get isPengelola => _currentAccount?.role == 'pengelola';
+
+  static void login(DemoAccount account) {
+    _currentAccount = account;
+    ApiConfig.setDemoSession(token: account.token, role: account.role);
+    AlamatTersimpan.reset();
+  }
+
+  static void logout() {
+    _currentAccount = null;
+    ApiConfig.clearDemoSession();
+    AlamatTersimpan.reset();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Halaman Login Demo
+// ---------------------------------------------------------------------------
+class LoginDemoPage extends StatefulWidget {
+  const LoginDemoPage({super.key});
+
+  @override
+  State<LoginDemoPage> createState() => _LoginDemoPageState();
+}
+
+class _LoginDemoPageState extends State<LoginDemoPage> {
+  String? _selectedAccountId;
+
+  void _pilihAkun(DemoAccount account) async {
+    setState(() => _selectedAccountId = account.id);
+    await Future.delayed(const Duration(milliseconds: 120));
+    SessionPengguna.login(account);
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => account.role == 'pengelola'
+            ? const AdminDashboardPage()
+            : const ProdukListPage(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F6FA),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 8),
+              // Logo & Badge Demo
+              Center(
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2F6BFF),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color:
+                            const Color(0xFF2F6BFF).withValues(alpha: 0.3),
+                        blurRadius: 14,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.storefront_rounded,
+                    color: Colors.white,
+                    size: 34,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Center(
+                child: Text(
+                  'ATK Mart',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                    color: Color(0xFF15151A),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Center(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEAF0FF),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFC7D7FE)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.lock_person_outlined,
+                          size: 13, color: Color(0xFF2F6BFF)),
+                      SizedBox(width: 5),
+                      Text(
+                        'MODE DEMO PENGUJIAN',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                          color: Color(0xFF2F6BFF),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Pilih Akun Demo Pembeli',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF15151A),
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Pilih akun untuk menguji isolasi data keranjang, checkout, dan riwayat pesanan.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: Color(0xFF6B7280),
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Kartu Akun Pembeli 1
+              _buildAccountCard(
+                context,
+                account: DemoAccount.pembeli1,
+                badgeLabel: 'PELANGGAN UTAMA',
+                bulletPoints: const [
+                  'ID Pelanggan #1 di server Laravel',
+                  'Memiliki keranjang & riwayat pesanan mandiri',
+                  'Simulasi pembayaran Transfer Bank & COD',
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // Kartu Akun Pembeli 2
+              _buildAccountCard(
+                context,
+                account: DemoAccount.pembeli2,
+                badgeLabel: 'PELANGGAN KEDUA',
+                bulletPoints: const [
+                  'ID Pelanggan #2 di server Laravel',
+                  'Isolasi penuh: data tidak tercampur dengan Pembeli 1',
+                  'Keranjang dan transaksi terpisah seutuhnya',
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Opsi Akses Pengelola (Opsional untuk testing Paket B)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF3C7),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.admin_panel_settings_outlined,
+                        color: Color(0xFFD97706),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Mode Pengelola Toko',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF15151A),
+                            ),
+                          ),
+                          Text(
+                            'Kelola pesanan masuk & produk katalog',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF6B7280),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFFD97706),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      onPressed: () => _pilihAkun(DemoAccount.pengelola),
+                      child: const Text(
+                        'Masuk Admin',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Footer Note
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline,
+                        size: 15, color: Color(0xFF6B7280)),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Mode demo menggunakan header Bearer Token statis sesuai aturan backend Laravel. Data tetap terisolasi di sisi server.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF6B7280),
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAccountCard(
+    BuildContext context, {
+    required DemoAccount account,
+    required String badgeLabel,
+    required List<String> bulletPoints,
+  }) {
+    final isLoading = _selectedAccountId == account.id;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: account.color.withValues(alpha: 0.35),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: account.color.withValues(alpha: 0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: isLoading ? null : () => _pilihAkun(account),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: account.color.withValues(alpha: 0.12),
+                      child: Icon(account.icon, size: 22, color: account.color),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                account.nama,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF15151A),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: account.color.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  badgeLabel,
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: account.color,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            account.subNama,
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              color: Color(0xFF6B7280),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                // Token Chip
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.key_rounded,
+                          size: 13, color: Color(0xFF9CA3AF)),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          account.token,
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 11,
+                            color: Color(0xFF4B5563),
+                            fontWeight: FontWeight.w600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // Bullets
+                ...bulletPoints.map(
+                  (pt) => Padding(
+                    padding: const EdgeInsets.only(bottom: 3),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Icon(Icons.check_circle_rounded,
+                            size: 13, color: account.color),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            pt,
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              color: Color(0xFF4B5563),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Action Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 40,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: account.color,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    icon: isLoading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.login_rounded, size: 16),
+                    label: Text(
+                      'Masuk sebagai ${account.nama}',
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    onPressed: isLoading ? null : () => _pilihAkun(account),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class AtkMartApp extends StatelessWidget {
   const AtkMartApp({super.key});
 
@@ -33,7 +555,397 @@ class AtkMartApp extends StatelessWidget {
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFF5F5F7),
       ),
-      home: const ProdukListPage(),
+      home: SessionPengguna.isLoggedIn
+          ? (SessionPengguna.isPengelola
+              ? const AdminDashboardPage()
+              : const ProdukListPage())
+          : const LoginDemoPage(),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard Utama Pengelola / Admin (AdminDashboardPage)
+// Khusus operasional toko: hanya menampilkan Kelola Produk dan Kelola Pesanan.
+// ---------------------------------------------------------------------------
+class AdminDashboardPage extends StatefulWidget {
+  final LayananApi? api;
+  const AdminDashboardPage({super.key, this.api});
+
+  @override
+  State<AdminDashboardPage> createState() => _AdminDashboardPageState();
+}
+
+class _AdminDashboardPageState extends State<AdminDashboardPage> {
+  late final LayananApi _api = widget.api ?? LayananApi();
+  int _countPesananMasuk = 0;
+  int _countProduk = 0;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchStats();
+  }
+
+  Future<void> _fetchStats() async {
+    try {
+      final ordersFuture = _api.fetchPesananPengelola();
+      final produkFuture = _api.fetchProduk();
+      final results = await Future.wait([ordersFuture, produkFuture]);
+      if (mounted) {
+        setState(() {
+          _countPesananMasuk = (results[0] as List<Order>).length;
+          _countProduk = (results[1] as List<Product>).length;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _confirmLogout(BuildContext context) {
+    showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Keluar dari Mode Pengelola'),
+        content: const Text(
+          'Keluar dari sesi Pengelola Toko dan kembali ke halaman Login Demo?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE14B4B),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Keluar'),
+          ),
+        ],
+      ),
+    ).then((confirmed) {
+      if (confirmed == true && context.mounted) {
+        SessionPengguna.logout();
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginDemoPage()),
+          (route) => false,
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final account = SessionPengguna.currentAccount ?? DemoAccount.pengelola;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F6FA),
+      appBar: AppBar(
+        title: const Text(
+          'Dashboard Pengelola',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        centerTitle: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Segarkan',
+            onPressed: () {
+              setState(() => _isLoading = true);
+              _fetchStats();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Keluar / Ganti Akun',
+            onPressed: () => _confirmLogout(context),
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Banner Identitas Pengelola
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE6E6EC), width: 0.8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: const Color(0xFFFEF3C7),
+                    child: const Icon(
+                      Icons.admin_panel_settings_rounded,
+                      size: 28,
+                      color: Color(0xFFD97706),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              account.nama,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF15151A),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF3C7),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'ADMIN',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFD97706),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          account.subNama,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF8A8A93),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFE14B4B),
+                      side:
+                          const BorderSide(color: Color(0xFFFFCCCC), width: 1),
+                      backgroundColor: const Color(0xFFFFF5F5),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      minimumSize: const Size(0, 32),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                    ),
+                    icon: const Icon(Icons.logout, size: 14),
+                    label: const Text(
+                      'Keluar',
+                      style: TextStyle(
+                          fontSize: 11.5, fontWeight: FontWeight.bold),
+                    ),
+                    onPressed: () => _confirmLogout(context),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            const Text(
+              'Menu Operasional Toko',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF15151A),
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Kelola katalog barang dan pantau seluruh transaksi pesanan masuk.',
+              style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+            ),
+            const SizedBox(height: 18),
+
+            // Menu 1: Kelola Produk
+            _buildAdminMenuCard(
+              context,
+              title: 'Kelola Produk',
+              subtitle:
+                  'Tambah produk baru, ubah harga satuan & grosir, sesuaikan stok ATK, dan konfigurasi ketersediaan pre-order.',
+              icon: Icons.inventory_2_rounded,
+              color: const Color(0xFFE67E22),
+              countLabel: _isLoading ? null : '$_countProduk Produk Terdaftar',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const KelolaProdukPage()),
+                ).then((_) => _fetchStats());
+              },
+            ),
+            const SizedBox(height: 16),
+
+            // Menu 2: Kelola Pesanan
+            _buildAdminMenuCard(
+              context,
+              title: 'Kelola Pesanan',
+              subtitle:
+                  'Konfirmasi stok pre-order, verifikasi pembayaran/COD, dan perbarui tahapan proses pesanan masuk.',
+              icon: Icons.assignment_rounded,
+              color: const Color(0xFF2F6BFF),
+              countLabel:
+                  _isLoading ? null : '$_countPesananMasuk Pesanan Masuk',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const KelolaPesananPage()),
+                ).then((_) => _fetchStats());
+              },
+            ),
+            const SizedBox(height: 24),
+
+            // Info Box Admin
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.shield_outlined,
+                      size: 18, color: Color(0xFF1D4ED8)),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Mode Pengelola: Akses administratif menggunakan token pengelola. Seluruh aksi konfirmasi pembayaran dan perubahan stok langsung tersinkronisasi ke server Laravel.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF1E40AF),
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdminMenuCard(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    String? countLabel,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE6E6EC), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, size: 28, color: color),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF15151A),
+                              ),
+                            ),
+                          ),
+                          Icon(Icons.arrow_forward_ios_rounded,
+                              size: 16, color: Colors.grey.shade400),
+                        ],
+                      ),
+                      if (countLabel != null) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          countLabel,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: color,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 6),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: Color(0xFF6B7280),
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -351,6 +1263,196 @@ class _ProdukListPageState extends State<ProdukListPage> {
     );
   }
 
+  void _confirmLogout(BuildContext context) {
+    final account = SessionPengguna.currentAccount;
+    showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Keluar dari Akun Demo'),
+        content: Text(
+          'Anda sedang menggunakan ${account?.nama ?? "akun demo"}.\n\n'
+          'Keluar untuk berganti ke akun lain? Token akun sebelumnya tidak akan digunakan lagi.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE14B4B),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Keluar'),
+          ),
+        ],
+      ),
+    ).then((confirmed) {
+      if (confirmed == true && context.mounted) {
+        SessionPengguna.logout();
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginDemoPage()),
+          (route) => false,
+        );
+      }
+    });
+  }
+
+  Widget _buildUserIdentityBanner(BuildContext context) {
+    final account = SessionPengguna.currentAccount;
+    if (account == null) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 2),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE6E6EC), width: 0.8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 17,
+                backgroundColor: account.color.withValues(alpha: 0.12),
+                child: Icon(account.icon, size: 20, color: account.color),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          account.nama,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: Color(0xFF15151A),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: account.color.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            account.role.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.bold,
+                              color: account.color,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      account.subNama,
+                      style:
+                          const TextStyle(fontSize: 11, color: Color(0xFF8A8A93)),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFE14B4B),
+                  side: const BorderSide(color: Color(0xFFFFCCCC), width: 1),
+                  backgroundColor: const Color(0xFFFFF5F5),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  minimumSize: const Size(0, 30),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+                icon: const Icon(Icons.logout, size: 13),
+                label: const Text(
+                  'Ganti Akun',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+                onPressed: () => _confirmLogout(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Pintasan Cepat Pesanan Pembeli (Pesanan Aktif & Riwayat Selesai)
+          Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF2F6BFF),
+                side: const BorderSide(color: Color(0xFFC7D7FE)),
+                backgroundColor: const Color(0xFFF0F5FF),
+                padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
+                minimumSize: const Size(0, 32),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+              icon: const Icon(Icons.local_shipping_outlined, size: 15),
+              label: const Text(
+                'Pesanan Saya',
+                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PesananSayaPage()),
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF2E9E5B),
+                side: const BorderSide(color: Color(0xFFB7EB8F)),
+                backgroundColor: const Color(0xFFF6FFED),
+                padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
+                minimumSize: const Size(0, 32),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+              icon: const Icon(Icons.history_rounded, size: 15),
+              label: const Text(
+                'Riwayat Selesai',
+                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const RiwayatPesananPage()),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    ],
+  ),
+);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -362,8 +1464,18 @@ class _ProdukListPageState extends State<ProdukListPage> {
         centerTitle: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.receipt_long_outlined),
-            tooltip: 'Riwayat Pesanan',
+            icon: const Icon(Icons.local_shipping_outlined),
+            tooltip: 'Pesanan Saya (Aktif)',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PesananSayaPage()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.history_rounded),
+            tooltip: 'Riwayat Pesanan (Selesai)',
             onPressed: () {
               Navigator.push(
                 context,
@@ -382,34 +1494,22 @@ class _ProdukListPageState extends State<ProdukListPage> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.admin_panel_settings_outlined),
-            tooltip: 'Kelola Produk (Pengelola)',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const KelolaProdukPage()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.assignment_outlined),
-            tooltip: 'Kelola Pesanan (Pengelola)',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const KelolaPesananPage()),
-              );
-            },
-          ),
-          IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Segarkan',
             onPressed: _reload,
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Keluar / Ganti Akun',
+            onPressed: () => _confirmLogout(context),
           ),
         ],
       ),
       body: Column(
         children: [
+          // 0. Identitas Akun Login Demo
+          _buildUserIdentityBanner(context),
+
           // 1. Bilah Pencarian
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -1677,7 +2777,18 @@ class _KeranjangPageState extends State<KeranjangPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Keranjang Belanja'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Keranjang Belanja',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            if (SessionPengguna.currentAccount != null)
+              Text(
+                'Akun: ${SessionPengguna.currentAccount!.nama}',
+                style: const TextStyle(fontSize: 11, color: Color(0xFF8A8A93)),
+              ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -2096,6 +3207,12 @@ class AlamatTersimpan {
   static String? nama;
   static String? alamat;
   static String? kota;
+
+  static void reset() {
+    nama = null;
+    alamat = null;
+    kota = null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -2137,6 +3254,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
     // Auto-fill alamat tersimpan jika tersedia
     if (AlamatTersimpan.nama != null && AlamatTersimpan.nama!.isNotEmpty) {
       _namaController.text = AlamatTersimpan.nama!;
+    } else if (SessionPengguna.currentAccount != null) {
+      _namaController.text = SessionPengguna.currentAccount!.nama;
     }
     if (AlamatTersimpan.alamat != null && AlamatTersimpan.alamat!.isNotEmpty) {
       _alamatController.text = AlamatTersimpan.alamat!;
@@ -2349,7 +3468,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Checkout Pesanan'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Checkout Pesanan',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            if (SessionPengguna.currentAccount != null)
+              Text(
+                'Akun: ${SessionPengguna.currentAccount!.nama}',
+                style: const TextStyle(fontSize: 11, color: Color(0xFF8A8A93)),
+              ),
+          ],
+        ),
       ),
       body: FutureBuilder<KurirData>(
         future: _futureKurir,
@@ -3148,9 +4278,9 @@ class KonfirmasiPesananPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  icon: const Icon(Icons.receipt_long_outlined),
+                  icon: const Icon(Icons.local_shipping_outlined),
                   label: const Text(
-                    'Buka Riwayat Pesanan',
+                    'Buka Pesanan Saya (Aktif)',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
@@ -3160,7 +4290,7 @@ class KonfirmasiPesananPage extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const RiwayatPesananPage(),
+                        builder: (_) => const PesananSayaPage(),
                       ),
                     );
                   },
@@ -3276,40 +4406,90 @@ Widget _buildOrderStatusBadge(String status) {
 }
 
 // ---------------------------------------------------------------------------
-// Halaman Riwayat Pesanan (RiwayatPesananPage) - Tahap 6
-// GET /api/pesanan
+// Halaman Pesanan Saya (PesananSayaPage) - Khusus Pesanan Aktif / Berjalan
+// Menampilkan seluruh pesanan yang belum selesai (status != 'selesai')
 // ---------------------------------------------------------------------------
-class RiwayatPesananPage extends StatefulWidget {
-  const RiwayatPesananPage({super.key});
+class PesananSayaPage extends StatefulWidget {
+  const PesananSayaPage({super.key});
 
   @override
-  State<RiwayatPesananPage> createState() => _RiwayatPesananPageState();
+  State<PesananSayaPage> createState() => _PesananSayaPageState();
 }
 
-class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
+class _PesananSayaPageState extends State<PesananSayaPage> {
   final LayananApi _api = LayananApi();
   late Future<List<Order>> _futurePesanan;
+  String _filterStatus = 'semua';
 
   @override
   void initState() {
     super.initState();
+    _loadPesanan();
+  }
+
+  void _loadPesanan() {
     _futurePesanan = _api.fetchPesanan();
   }
 
   void _reload() {
     setState(() {
-      _futurePesanan = _api.fetchPesanan();
+      _loadPesanan();
     });
   }
 
   String _formatErrorMessage(Object error) => formatAppErrorMessage(error);
 
+  String _getStatusHint(String status, String? metode) {
+    final isTransfer = (metode ?? '').toLowerCase().contains('transfer') ||
+        (metode ?? '').toLowerCase().contains('manual');
+
+    switch (status.toLowerCase()) {
+      case 'menunggu_stok':
+        return 'Pre-order: Menunggu konfirmasi ketersediaan stok produk dari toko.';
+      case 'menunggu_pembayaran':
+        return isTransfer
+            ? 'Menunggu transfer bank. Buka rincian untuk simulasi ATM & lapor bayar.'
+            : 'Menunggu proses konfirmasi pesanan COD.';
+      case 'menunggu_konfirmasi':
+        return 'Pembayaran/pesanan sedang diverifikasi oleh pengelola toko.';
+      case 'dibayar':
+        return 'Pembayaran terverifikasi. Pesanan akan segera diproses oleh toko.';
+      case 'diproses':
+        return 'Pesanan sedang disiapkan dan dikemas oleh toko.';
+      case 'dikirim':
+        return 'Pesanan sedang dalam pengiriman ke alamat Anda.';
+      default:
+        return 'Pesanan aktif sedang diproses dalam alur sistem.';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Riwayat Pesanan'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Pesanan Saya',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            if (SessionPengguna.currentAccount != null)
+              Text(
+                'Akun: ${SessionPengguna.currentAccount!.nama}',
+                style: const TextStyle(fontSize: 11, color: Color(0xFF8A8A93)),
+              ),
+          ],
+        ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.history_rounded),
+            tooltip: 'Riwayat Selesai',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const RiwayatPesananPage()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Segarkan',
@@ -3356,20 +4536,23 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
             );
           }
 
-          final orders = snapshot.data ?? [];
+          final allOrders = snapshot.data ?? [];
+          // Aturan: Hanya pesanan aktif/belum selesai (status != 'selesai')
+          final activeOrders =
+              allOrders.where((o) => o.status != 'selesai').toList();
 
-          if (orders.isEmpty) {
+          if (activeOrders.isEmpty) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.receipt_long_outlined,
+                    Icon(Icons.local_shipping_outlined,
                         size: 64, color: Colors.grey.shade400),
                     const SizedBox(height: 12),
                     const Text(
-                      'Belum Ada Riwayat Pesanan',
+                      'Tidak Ada Pesanan Aktif',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -3378,22 +4561,501 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Pesanan yang Anda buat akan tercatat dan ditampilkan di sini.',
+                      'Seluruh pesanan Anda telah selesai atau Anda belum membuat pesanan baru.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                           fontSize: 13, color: Colors.grey.shade600),
                     ),
                     const SizedBox(height: 18),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.history_rounded),
+                          label: const Text('Riwayat Selesai'),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const RiwayatPesananPage()),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 10),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2F6BFF),
+                            foregroundColor: Colors.white,
+                          ),
+                          icon: const Icon(Icons.storefront_outlined),
+                          label: const Text('Mulai Belanja'),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          final filteredOrders = _filterStatus == 'semua'
+              ? activeOrders
+              : activeOrders.where((o) => o.status == _filterStatus).toList();
+
+          return Column(
+            children: [
+              // Filter status chip bar
+              Container(
+                color: Colors.white,
+                width: double.infinity,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    children: [
+                      _buildChip('Semua Aktif', 'semua', activeOrders.length),
+                      _buildChip(
+                        'Menunggu Pembayaran',
+                        'menunggu_pembayaran',
+                        activeOrders
+                            .where((o) => o.status == 'menunggu_pembayaran')
+                            .length,
+                      ),
+                      _buildChip(
+                        'Menunggu Konfirmasi',
+                        'menunggu_konfirmasi',
+                        activeOrders
+                            .where((o) => o.status == 'menunggu_konfirmasi')
+                            .length,
+                      ),
+                      _buildChip(
+                        'Menunggu Stok',
+                        'menunggu_stok',
+                        activeOrders
+                            .where((o) => o.status == 'menunggu_stok')
+                            .length,
+                      ),
+                      _buildChip(
+                        'Diproses',
+                        'diproses',
+                        activeOrders
+                            .where((o) => o.status == 'diproses')
+                            .length,
+                      ),
+                      _buildChip(
+                        'Dikirim',
+                        'dikirim',
+                        activeOrders.where((o) => o.status == 'dikirim').length,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const Divider(height: 1, color: Color(0xFFE6E6EC)),
+
+              Expanded(
+                child: filteredOrders.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Tidak ada pesanan aktif dengan status "$_filterStatus".',
+                          style: TextStyle(
+                              color: Colors.grey.shade600, fontSize: 13),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: filteredOrders.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final order = filteredOrders[index];
+                          final hint = _getStatusHint(
+                              order.status, order.metodePembayaran);
+
+                          return Card(
+                            color: Colors.white,
+                            elevation: 0.8,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              side: const BorderSide(
+                                  color: Color(0xFFE6E6EC), width: 0.8),
+                            ),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(14),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => RincianPesananPage(
+                                      pesananId: order.id,
+                                      nomorPesanan: order.nomorPesanan,
+                                    ),
+                                  ),
+                                ).then((_) => _reload());
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Baris 1: Nomor Pesanan & Badge Status
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                order.nomorPesanan,
+                                                style: const TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Color(0xFF15151A),
+                                                ),
+                                              ),
+                                              if (order.createdAt != null) ...[
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  order.createdAt!,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.grey.shade600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _buildOrderStatusBadge(order.status),
+                                      ],
+                                    ),
+
+                                    const SizedBox(height: 10),
+                                    // Hint Status Banner
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF9FAFB),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                            color: const Color(0xFFE5E7EB)),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.info_outline,
+                                              size: 14,
+                                              color: Color(0xFF6B7280)),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              hint,
+                                              style: const TextStyle(
+                                                fontSize: 11.5,
+                                                color: Color(0xFF4B5563),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 10),
+                                    const Divider(height: 1),
+                                    const SizedBox(height: 10),
+
+                                    // Baris 2: Rincian Singkat (Jumlah Item, Kurir, Total)
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            if (order.jumlahItem != null)
+                                              Text(
+                                                '${order.jumlahItem} Produk dipesan',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey.shade700,
+                                                ),
+                                              ),
+                                            if (order.kurir != null)
+                                              Text(
+                                                'Kurir: ${order.kurir}',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: Colors.grey.shade500,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          children: [
+                                            const Text(
+                                              'Total Tagihan',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Color(0xFF8A8A93),
+                                              ),
+                                            ),
+                                            Text(
+                                              _formatRupiah(order.total),
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF2F6BFF),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    // Tombol Aksi Langsung ke Detail
+                                    SizedBox(
+                                      width: double.infinity,
+                                      height: 38,
+                                      child: OutlinedButton.icon(
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor:
+                                              const Color(0xFF2F6BFF),
+                                          side: const BorderSide(
+                                              color: Color(0xFF2F6BFF),
+                                              width: 1),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                        icon: const Icon(
+                                            Icons.visibility_outlined,
+                                            size: 16),
+                                        label: const Text(
+                                          'Lihat Detail & Lacak Pesanan',
+                                          style: TextStyle(
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  RincianPesananPage(
+                                                pesananId: order.id,
+                                                nomorPesanan:
+                                                    order.nomorPesanan,
+                                              ),
+                                            ),
+                                          ).then((_) => _reload());
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildChip(String label, String value, int count) {
+    final isSelected = _filterStatus == value;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Text('$label ($count)'),
+        selected: isSelected,
+        selectedColor: const Color(0xFF2F6BFF),
+        backgroundColor: const Color(0xFFEDEDF2),
+        labelStyle: TextStyle(
+          color: isSelected ? Colors.white : const Color(0xFF15151A),
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          fontSize: 11.5,
+        ),
+        onSelected: (_) {
+          setState(() {
+            _filterStatus = value;
+          });
+        },
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Halaman Riwayat Pesanan Selesai (RiwayatPesananPage) - Tahap 6
+// Khusus menampilkan pesanan yang telah selesai (status == 'selesai')
+// ---------------------------------------------------------------------------
+class RiwayatPesananPage extends StatefulWidget {
+  const RiwayatPesananPage({super.key});
+
+  @override
+  State<RiwayatPesananPage> createState() => _RiwayatPesananPageState();
+}
+
+class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
+  final LayananApi _api = LayananApi();
+  late Future<List<Order>> _futurePesanan;
+
+  @override
+  void initState() {
+    super.initState();
+    _futurePesanan = _api.fetchPesanan();
+  }
+
+  void _reload() {
+    setState(() {
+      _futurePesanan = _api.fetchPesanan();
+    });
+  }
+
+  String _formatErrorMessage(Object error) => formatAppErrorMessage(error);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Riwayat Pesanan (Selesai)',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            if (SessionPengguna.currentAccount != null)
+              Text(
+                'Akun: ${SessionPengguna.currentAccount!.nama}',
+                style: const TextStyle(fontSize: 11, color: Color(0xFF8A8A93)),
+              ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.local_shipping_outlined),
+            tooltip: 'Pesanan Saya (Aktif)',
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const PesananSayaPage()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Segarkan',
+            onPressed: _reload,
+          ),
+        ],
+      ),
+      body: FutureBuilder<List<Order>>(
+        future: _futurePesanan,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline,
+                        size: 48, color: Color(0xFFE14B4B)),
+                    const SizedBox(height: 12),
+                    Text(
+                      _formatErrorMessage(snapshot.error!),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontSize: 14, color: Color(0xFF15151A)),
+                    ),
+                    const SizedBox(height: 16),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2F6BFF),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 12),
                       ),
-                      icon: const Icon(Icons.storefront_outlined),
-                      label: const Text('Mulai Belanja'),
-                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Coba Lagi'),
+                      onPressed: _reload,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          final allOrders = snapshot.data ?? [];
+          // Khusus pesanan berstatus selesai (status == 'selesai')
+          final orders =
+              allOrders.where((o) => o.status == 'selesai').toList();
+
+          if (orders.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_circle_outline,
+                        size: 64, color: Colors.grey.shade400),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Belum Ada Pesanan Selesai',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF15151A),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Pesanan yang telah berhasil diterima dan diselesaikan akan tercatat di sini.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontSize: 13, color: Colors.grey.shade600),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2F6BFF),
+                            foregroundColor: Colors.white,
+                          ),
+                          icon: const Icon(Icons.local_shipping_outlined),
+                          label: const Text('Lihat Pesanan Aktif'),
+                          onPressed: () {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const PesananSayaPage()),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ],
                 ),

@@ -18,6 +18,10 @@ class ApiConfig {
     defaultValue: '',
   );
 
+  static const String tokenPembeli1Statis = 'token-pembeli-atk-mart-2026';
+  static const String tokenPembeli2Statis = 'token-pembeli-2-atk-mart-2026';
+  static const String tokenPengelolaStatis = 'token-pengelola-atk-mart-2026';
+
   static String _localBaseUrl = '';
   static String _tokenPembeli = '';
   static String _tokenPengelola = '';
@@ -58,6 +62,18 @@ class ApiConfig {
   /// Reset override token.
   static void clearCustomToken() {
     _overrideToken = '';
+  }
+
+  /// Atur sesi demo aktif dengan token dan role tertentu.
+  static void setDemoSession({required String token, required String role}) {
+    setCustomToken(token);
+    setActiveRole(role);
+  }
+
+  /// Bersihkan sesi demo.
+  static void clearDemoSession() {
+    clearCustomToken();
+    setActiveRole('pembeli');
   }
 
   /// Token statis aktif:
