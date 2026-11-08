@@ -10,6 +10,7 @@ class CartItem {
   final int jumlah;
   final int hargaSatuan;
   final int subtotal;
+  final bool selected;
 
   const CartItem({
     required this.id,
@@ -18,6 +19,7 @@ class CartItem {
     required this.jumlah,
     required this.hargaSatuan,
     required this.subtotal,
+    this.selected = true,
   });
 
   factory CartItem.fromJson(Map<String, dynamic> json) => CartItem(
@@ -27,6 +29,7 @@ class CartItem {
         jumlah: json['jumlah'] as int,
         hargaSatuan: json['harga_satuan'] as int,
         subtotal: json['subtotal'] as int,
+        selected: json['selected'] as bool? ?? true,
       );
 
   Map<String, dynamic> toJson() => {
@@ -36,6 +39,7 @@ class CartItem {
         'jumlah': jumlah,
         'harga_satuan': hargaSatuan,
         'subtotal': subtotal,
+        'selected': selected,
       };
 }
 

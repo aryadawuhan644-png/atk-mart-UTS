@@ -218,6 +218,7 @@ class PesananController extends Controller
         $allowedTransitions = [
             'menunggu_stok' => [
                 'menunggu_pembayaran' => ['pengelola'],
+                'menunggu_konfirmasi' => ['pengelola'],
                 'dibatalkan' => ['pembeli', 'pengelola'],
             ],
             'menunggu_pembayaran' => [
@@ -226,6 +227,7 @@ class PesananController extends Controller
             ],
             'menunggu_konfirmasi' => [
                 'dibayar' => ['pengelola'],
+                'diproses' => ['pengelola'],
                 'dibatalkan' => ['pengelola'],
             ],
             'dibayar' => [
@@ -273,9 +275,16 @@ class PesananController extends Controller
                 }
             }
 
-            // Jika menunggu_stok berpindah ke menunggu_pembayaran, tandai item tidak menunggu stok lagi
-            if ($statusLama === 'menunggu_stok' && $statusBaru === 'menunggu_pembayaran') {
-                $pesanan->detail()->update(['menunggu_stok' => false]);
+            // Jika menunggu_stok berpindah ke menunggu_pembayaran atau menunggu_konfirmasi, tandai item tidak menunggu stok lagi
+            // dan catat stok_dikurangi tanpa memotong stok produk lagi (mencegah double deduction)
+            if ($statusLama === 'menunggu_stok' && in_array($statusBaru, ['menunggu_pembayaran', 'menunggu_konfirmasi'], true)) {
+                foreach ($pesanan->detail as $detail) {
+                    if ($detail->menunggu_stok) {
+                        $detail->menunggu_stok = false;
+                        $detail->stok_dikurangi = (int) $detail->jumlah;
+                        $detail->save();
+                    }
+                }
             }
 
             $pesanan->status = $statusBaru;

@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class CorsTest extends TestCase
 {
+    use DatabaseTransactions;
     public function test_options_preflight_to_keranjang_returns_cors_headers(): void
     {
         $response = $this->withHeaders([

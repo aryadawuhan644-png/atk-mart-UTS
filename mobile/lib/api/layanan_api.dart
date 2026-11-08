@@ -271,12 +271,13 @@ class LayananApi {
   // ---------------------------------------------------------------------------
   // 7. GET /keranjang (pembeli only)
   // Response: data = {items:[], subtotal:int, ongkos_kirim?:int, total?:int}
-  // Mendukung parameter opsional kurir_id dan wilayah_id untuk kalkulasi tarif server
+  // Mendukung parameter opsional kurir_id, wilayah_id, dan item_ids untuk kalkulasi tarif server
   // ---------------------------------------------------------------------------
-  Future<KeranjangData> fetchKeranjang({int? kurirId, int? wilayahId}) {
+  Future<KeranjangData> fetchKeranjang({int? kurirId, int? wilayahId, List<int>? itemIds}) {
     final query = <String, String>{};
     if (kurirId != null) query['kurir_id'] = kurirId.toString();
     if (wilayahId != null) query['wilayah_id'] = wilayahId.toString();
+    if (itemIds != null && itemIds.isNotEmpty) query['item_ids'] = itemIds.join(',');
 
     return _request(
       () => _client.get(

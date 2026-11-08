@@ -68,27 +68,28 @@ class PengirimanSeeder extends Seeder
         }
 
         // 3. 15 Kombinasi Tarif Kurir (3 Kurir x 5 Wilayah)
+        // Toko berlokasi di Sukun (wilayah_id: 4). Tarif Sukun paling murah, wilayah lain menyesuaikan jarak.
         $tarifList = [
             // Kurir 1: Instan Motor
-            ['kurir_id' => 1, 'wilayah_id' => 1, 'tarif' => 8000],
-            ['kurir_id' => 1, 'wilayah_id' => 2, 'tarif' => 10000],
-            ['kurir_id' => 1, 'wilayah_id' => 3, 'tarif' => 9000],
-            ['kurir_id' => 1, 'wilayah_id' => 4, 'tarif' => 12000],
-            ['kurir_id' => 1, 'wilayah_id' => 5, 'tarif' => 14000],
+            ['kurir_id' => 1, 'wilayah_id' => 4, 'tarif' => 8000],  // Sukun (Asal)
+            ['kurir_id' => 1, 'wilayah_id' => 2, 'tarif' => 10000], // Klojen
+            ['kurir_id' => 1, 'wilayah_id' => 5, 'tarif' => 12000], // Kedungkandang
+            ['kurir_id' => 1, 'wilayah_id' => 1, 'tarif' => 13000], // Lowokwaru
+            ['kurir_id' => 1, 'wilayah_id' => 3, 'tarif' => 15000], // Blimbing
 
             // Kurir 2: Reguler
-            ['kurir_id' => 2, 'wilayah_id' => 1, 'tarif' => 5000],
-            ['kurir_id' => 2, 'wilayah_id' => 2, 'tarif' => 6000],
-            ['kurir_id' => 2, 'wilayah_id' => 3, 'tarif' => 5000],
-            ['kurir_id' => 2, 'wilayah_id' => 4, 'tarif' => 7000],
-            ['kurir_id' => 2, 'wilayah_id' => 5, 'tarif' => 8000],
+            ['kurir_id' => 2, 'wilayah_id' => 4, 'tarif' => 5000],  // Sukun (Asal)
+            ['kurir_id' => 2, 'wilayah_id' => 2, 'tarif' => 6000],  // Klojen
+            ['kurir_id' => 2, 'wilayah_id' => 5, 'tarif' => 7000],  // Kedungkandang
+            ['kurir_id' => 2, 'wilayah_id' => 1, 'tarif' => 8000],  // Lowokwaru
+            ['kurir_id' => 2, 'wilayah_id' => 3, 'tarif' => 9000],  // Blimbing
 
             // Kurir 3: Kargo Pick-up
-            ['kurir_id' => 3, 'wilayah_id' => 1, 'tarif' => 25000],
-            ['kurir_id' => 3, 'wilayah_id' => 2, 'tarif' => 30000],
-            ['kurir_id' => 3, 'wilayah_id' => 3, 'tarif' => 25000],
-            ['kurir_id' => 3, 'wilayah_id' => 4, 'tarif' => 35000],
-            ['kurir_id' => 3, 'wilayah_id' => 5, 'tarif' => 40000],
+            ['kurir_id' => 3, 'wilayah_id' => 4, 'tarif' => 25000], // Sukun (Asal)
+            ['kurir_id' => 3, 'wilayah_id' => 2, 'tarif' => 30000], // Klojen
+            ['kurir_id' => 3, 'wilayah_id' => 5, 'tarif' => 35000], // Kedungkandang
+            ['kurir_id' => 3, 'wilayah_id' => 1, 'tarif' => 38000], // Lowokwaru
+            ['kurir_id' => 3, 'wilayah_id' => 3, 'tarif' => 40000], // Blimbing
         ];
 
         foreach ($tarifList as $t) {

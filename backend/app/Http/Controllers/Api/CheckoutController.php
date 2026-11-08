@@ -45,6 +45,8 @@ class CheckoutController extends Controller
             'wilayah_id' => 'required|integer|exists:wilayah_antar,id',
             'kurir_id' => 'required|integer|exists:kurir,id',
             'metode_pembayaran' => 'required|string|max:50',
+            'item_ids' => 'nullable|array',
+            'item_ids.*' => 'integer|exists:keranjang,id',
         ]);
 
         $pelangganId = (int) $request->attributes->get('pelanggan_id', 1);
@@ -58,6 +60,9 @@ class CheckoutController extends Controller
             'kurir_id' => (int) $validated['kurir_id'],
             'metode_pembayaran' => (string) $validated['metode_pembayaran'],
         ];
+        if (isset($validated['item_ids'])) {
+            $payloadToHash['item_ids'] = array_values($validated['item_ids']);
+        }
         $hashPermintaan = hash('sha256', json_encode($payloadToHash));
 
         // 2. Cek apakah kunci idempoten sudah pernah digunakan
@@ -140,8 +145,12 @@ class CheckoutController extends Controller
         // 6. Transaksi Checkout Atomik
         try {
             $pesanan = DB::transaction(function () use ($pelangganId, $validated, $wilayah, $metode, $ongkosKirim, $kunci, $hashPermintaan) {
-                // Kunci baris keranjang
-                $cartItems = Keranjang::where('pelanggan_id', $pelangganId)->lockForUpdate()->get();
+                // Kunci baris keranjang (hanya item_ids jika dipilih, atau semua jika tidak ditentukan)
+                $cartQuery = Keranjang::where('pelanggan_id', $pelangganId);
+                if (!empty($validated['item_ids'])) {
+                    $cartQuery->whereIn('id', $validated['item_ids']);
+                }
+                $cartItems = $cartQuery->lockForUpdate()->get();
 
                 if ($cartItems->isEmpty()) {
                     throw new \DomainException('Keranjang belanja kosong', 422);
@@ -210,7 +219,21 @@ class CheckoutController extends Controller
                     ];
                 }
 
-                $initialStatus = $hasPreorderWaiting ? 'menunggu_stok' : 'menunggu_pembayaran';
+                // Pisahkan status awal COD vs Transfer Manual:
+                // Pre-order butuh stok -> menunggu_stok
+                // COD normal -> langsung menunggu_konfirmasi (konfirmasi pesanan oleh toko tanpa bayar di muka)
+                // Transfer normal -> menunggu_pembayaran
+                $isCod = ($metode->kode === 'tunai_di_tempat');
+                if ($hasPreorderWaiting) {
+                    $initialStatus = 'menunggu_stok';
+                    $catatanAwal = 'Pesanan memuat produk pre-order, menunggu pasokan fisik dari pemasok';
+                } else {
+                    $initialStatus = $isCod ? 'menunggu_konfirmasi' : 'menunggu_pembayaran';
+                    $catatanAwal = $isCod
+                        ? 'Pesanan COD berhasil dibuat, menunggu konfirmasi pesanan oleh toko'
+                        : 'Pesanan berhasil dibuat melalui checkout, menunggu pembayaran';
+                }
+
                 $total = $subtotal + $ongkosKirim;
 
                 // Buat nomor pesanan format: ATK-YYYYMMDD-XXXXX
@@ -242,7 +265,7 @@ class CheckoutController extends Controller
                     'status_lama' => null,
                     'status_baru' => $initialStatus,
                     'aktor' => 'sistem',
-                    'catatan' => 'Pesanan berhasil dibuat melalui checkout',
+                    'catatan' => $catatanAwal,
                 ]);
 
                 KunciIdempoten::create([
@@ -252,8 +275,12 @@ class CheckoutController extends Controller
                     'pesanan_id' => $pesanan->id,
                 ]);
 
-                // Kosongkan keranjang server
-                Keranjang::where('pelanggan_id', $pelangganId)->delete();
+                // Hapus hanya item yang di-checkout dari keranjang, pertahankan item lainnya
+                Keranjang::where('pelanggan_id', $pelangganId)
+                    ->whereIn('id', $cartItems->pluck('id'))
+                    ->delete();
+
+                return $pesanan;
 
                 return $pesanan;
             });

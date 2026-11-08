@@ -28,7 +28,7 @@ class KeranjangController extends Controller
     /**
      * Format payload data keranjang beserta subtotal dari server.
      */
-    public static function formatKeranjang(int $pelangganId, ?int $kurirId = null, ?int $wilayahId = null): array
+    public static function formatKeranjang(int $pelangganId, ?int $kurirId = null, ?int $wilayahId = null, ?array $itemIds = null): array
     {
         $items = Keranjang::with(['produk.hargaGrosir'])
             ->where('pelanggan_id', $pelangganId)
@@ -41,7 +41,10 @@ class KeranjangController extends Controller
         foreach ($items as $item) {
             $hargaSatuan = self::hitungHargaSatuan($item->produk, $item->jumlah);
             $itemSubtotal = $hargaSatuan * $item->jumlah;
-            $subtotal += $itemSubtotal;
+            $isSelected = ($itemIds === null || in_array((int) $item->id, $itemIds, true));
+            if ($isSelected) {
+                $subtotal += $itemSubtotal;
+            }
 
             $formattedItems[] = [
                 'id' => (int) $item->id,
@@ -50,6 +53,7 @@ class KeranjangController extends Controller
                 'jumlah' => (int) $item->jumlah,
                 'harga_satuan' => (int) $hargaSatuan,
                 'subtotal' => (int) $itemSubtotal,
+                'selected' => $isSelected,
             ];
         }
 
@@ -81,8 +85,16 @@ class KeranjangController extends Controller
         $pelangganId = (int) $request->attributes->get('pelanggan_id', 1);
         $kurirId = $request->query('kurir_id') ? (int) $request->query('kurir_id') : null;
         $wilayahId = $request->query('wilayah_id') ? (int) $request->query('wilayah_id') : null;
+        
+        $rawItemIds = $request->query('item_ids');
+        $itemIds = null;
+        if (is_array($rawItemIds)) {
+            $itemIds = array_map('intval', $rawItemIds);
+        } elseif (is_string($rawItemIds) && trim($rawItemIds) !== '') {
+            $itemIds = array_map('intval', explode(',', $rawItemIds));
+        }
 
-        $data = self::formatKeranjang($pelangganId, $kurirId, $wilayahId);
+        $data = self::formatKeranjang($pelangganId, $kurirId, $wilayahId, $itemIds);
 
         return response()->json([
             'status' => 'sukses',

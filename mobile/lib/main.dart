@@ -456,9 +456,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
                 ),
               ),
               onSubmitted: (_) => _onSearchOrFilterChanged(),
-              onChanged: (_) {
-                setState(() {});
-              },
+              onChanged: (_) => _onSearchOrFilterChanged(),
             ),
           ),
 
@@ -716,6 +714,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
   late Future<Product> _futureDetail;
   int _jumlah = 1;
   bool _isAddingToCart = false;
+  bool _isBuyingNow = false;
 
   @override
   void initState() {
@@ -741,7 +740,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
 
   /// Kirim penambahan item ke server melalui POST /api/keranjang
   Future<void> _tambahKeKeranjang(Product product) async {
-    if (_isAddingToCart) return;
+    if (_isAddingToCart || _isBuyingNow) return;
 
     setState(() {
       _isAddingToCart = true;
@@ -754,6 +753,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
       );
 
       if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -779,12 +779,13 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
             },
           ),
           backgroundColor: const Color(0xFF2E9E5B),
-          duration: const Duration(seconds: 4),
+          duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
         ),
       );
     } on ConflictException catch (e) {
       if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -796,6 +797,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
             ],
           ),
           backgroundColor: const Color(0xFFE14B4B),
+          duration: const Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -804,38 +806,46 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
       final errorMsg = e.errors.values
           .expand((item) => item is List ? item : [item])
           .join(', ');
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(errorMsg.isNotEmpty ? errorMsg : formatAppErrorMessage(e)),
           backgroundColor: const Color(0xFFE14B4B),
+          duration: const Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
         ),
       );
     } on RequestTimeoutException {
       if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
               'Permintaan ke server melebihi batas waktu (15 detik). Silakan coba lagi.'),
           backgroundColor: Color(0xFFE14B4B),
+          duration: Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
         ),
       );
     } on NetworkException catch (e) {
       if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(formatAppErrorMessage(e)),
           backgroundColor: const Color(0xFFE14B4B),
+          duration: const Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
         ),
       );
     } catch (e) {
       if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(formatAppErrorMessage(e)),
           backgroundColor: const Color(0xFFE14B4B),
+          duration: const Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -843,6 +853,55 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
       if (mounted) {
         setState(() {
           _isAddingToCart = false;
+        });
+      }
+    }
+  }
+
+  /// Beli sekarang: Masukkan item ke keranjang dan langsung menuju checkout produk tersebut
+  Future<void> _beliSekarang(Product product) async {
+    if (_isAddingToCart || _isBuyingNow) return;
+
+    setState(() {
+      _isBuyingNow = true;
+    });
+
+    try {
+      await _api.addKeranjang(
+        produkId: product.id,
+        jumlah: _jumlah,
+      );
+
+      final cartData = await _api.fetchKeranjang();
+      final matchingItem = cartData.items.firstWhere(
+        (i) => i.produkId == product.id,
+        orElse: () => cartData.items.last,
+      );
+
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CheckoutPage(
+            selectedItemIds: [matchingItem.id],
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(formatAppErrorMessage(e)),
+          backgroundColor: const Color(0xFFE14B4B),
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isBuyingNow = false;
         });
       }
     }
@@ -1368,62 +1427,85 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
 
                       const SizedBox(height: 10),
 
-                      // Tombol Tambah ke Keranjang
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: !canOrder
-                                ? Colors.grey.shade400
-                                : (product.preOrder
-                                    ? const Color(0xFFE0A32E)
-                                    : const Color(0xFF0D0D12)),
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                      // Baris Tombol Aksi: Tambah ke Keranjang & Beli Sekarang
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 48,
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: !canOrder
+                                      ? Colors.grey.shade400
+                                      : const Color(0xFF0D0D12),
+                                  side: BorderSide(
+                                    color: !canOrder
+                                        ? Colors.grey.shade300
+                                        : const Color(0xFF0D0D12),
+                                    width: 1.5,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                onPressed: (!canOrder || _isAddingToCart || _isBuyingNow)
+                                    ? null
+                                    : () => _tambahKeKeranjang(product),
+                                icon: _isAddingToCart
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : Icon(
+                                        product.preOrder ? Icons.schedule : Icons.add_shopping_cart,
+                                        size: 18,
+                                      ),
+                                label: Text(
+                                  product.preOrder ? 'Keranjang PO' : 'Keranjang',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                             ),
                           ),
-                          onPressed: (!canOrder || _isAddingToCart)
-                              ? null
-                              : () => _tambahKeKeranjang(product),
-                          child: _isAddingToCart
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: SizedBox(
+                              height: 48,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: !canOrder
+                                      ? Colors.grey.shade400
+                                      : (product.preOrder ? const Color(0xFFE0A32E) : const Color(0xFF2F6BFF)),
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                )
-                              : Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      product.preOrder
-                                          ? Icons.schedule
-                                          : Icons.add_shopping_cart,
-                                      size: 18,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      !product.tersedia
-                                          ? 'Produk Tidak Tersedia'
-                                          : (product.stok == 0 &&
-                                                  !product.preOrder
-                                              ? 'Stok Habis'
-                                              : (product.preOrder
-                                                  ? 'Pesan Pre-Order Sekarang'
-                                                  : 'Tambah ke Keranjang')),
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
                                 ),
-                        ),
+                                onPressed: (!canOrder || _isAddingToCart || _isBuyingNow)
+                                    ? null
+                                    : () => _beliSekarang(product),
+                                icon: _isBuyingNow
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation(Colors.white),
+                                        ),
+                                      )
+                                    : const Icon(Icons.flash_on, size: 18),
+                                label: Text(
+                                  product.preOrder ? 'Beli PO' : 'Beli Sekarang',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -1452,6 +1534,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
   final LayananApi _api = LayananApi();
   late Future<KeranjangData> _futureKeranjang;
   bool _isProcessing = false;
+  Set<int>? _selectedItemIds;
 
   @override
   void initState() {
@@ -1688,9 +1771,67 @@ class _KeranjangPageState extends State<KeranjangPage> {
             );
           }
 
+          // Sinkronisasi pilihan item
+          final itemIds = items.map((e) => e.id).toSet();
+          if (_selectedItemIds == null) {
+            _selectedItemIds = Set.from(itemIds);
+          } else {
+            _selectedItemIds = _selectedItemIds!.intersection(itemIds);
+          }
+
+          final selectedItems =
+              items.where((i) => _selectedItemIds!.contains(i.id)).toList();
+          final int selectedSubtotal =
+              selectedItems.fold(0, (sum, i) => sum + i.subtotal);
+          final bool isAllSelected =
+              items.isNotEmpty && _selectedItemIds!.length == items.length;
+          final bool canCheckout = !_isProcessing && selectedItems.isNotEmpty;
+
           return Column(
             children: [
-              // Daftar Item Keranjang
+              // 1. Bilah Kontrol "Pilih Semua"
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: const Color(0xFFE6E6EC),
+                      width: 0.8,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: isAllSelected,
+                      tristate: _selectedItemIds!.isNotEmpty && !isAllSelected,
+                      onChanged: _isProcessing
+                          ? null
+                          : (val) {
+                              setState(() {
+                                if (val == true) {
+                                  _selectedItemIds = Set.from(itemIds);
+                                } else {
+                                  _selectedItemIds = <int>{};
+                                }
+                              });
+                            },
+                    ),
+                    Text(
+                      'Pilih Semua (${_selectedItemIds!.length}/${items.length})',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF15151A),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // 2. Daftar Item Keranjang dengan Checkbox
               Expanded(
                 child: ListView.separated(
                   padding: const EdgeInsets.all(16),
@@ -1698,13 +1839,19 @@ class _KeranjangPageState extends State<KeranjangPage> {
                   separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     final item = items[index];
+                    final isChecked = _selectedItemIds!.contains(item.id);
+
                     return Card(
                       color: Colors.white,
                       elevation: 0.8,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
-                        side: const BorderSide(
-                            color: Color(0xFFE6E6EC), width: 0.8),
+                        side: BorderSide(
+                          color: isChecked
+                              ? const Color(0xFF2F6BFF).withValues(alpha: 0.5)
+                              : const Color(0xFFE6E6EC),
+                          width: isChecked ? 1.2 : 0.8,
+                        ),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(12),
@@ -1714,6 +1861,21 @@ class _KeranjangPageState extends State<KeranjangPage> {
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                Checkbox(
+                                  value: isChecked,
+                                  onChanged: _isProcessing
+                                      ? null
+                                      : (val) {
+                                          setState(() {
+                                            if (val == true) {
+                                              _selectedItemIds!.add(item.id);
+                                            } else {
+                                              _selectedItemIds!.remove(item.id);
+                                            }
+                                          });
+                                        },
+                                ),
+                                const SizedBox(width: 4),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
@@ -1839,7 +2001,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
                 ),
               ),
 
-              // Bagian Bawah: Total & Lanjut ke Checkout
+              // 3. Bagian Bawah: Subtotal Terpilih & Lanjut ke Checkout
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: const BoxDecoration(
@@ -1863,15 +2025,15 @@ class _KeranjangPageState extends State<KeranjangPage> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Total Subtotal Server',
-                                style: TextStyle(
+                              Text(
+                                'Subtotal (${selectedItems.length} terpilih)',
+                                style: const TextStyle(
                                   fontSize: 12,
                                   color: Color(0xFF8A8A93),
                                 ),
                               ),
                               Text(
-                                _formatRupiah(cartData!.subtotal),
+                                _formatRupiah(selectedSubtotal),
                                 style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
@@ -1882,31 +2044,36 @@ class _KeranjangPageState extends State<KeranjangPage> {
                           ),
                           ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF0D0D12),
+                              backgroundColor: canCheckout
+                                  ? const Color(0xFF0D0D12)
+                                  : Colors.grey.shade400,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 20, vertical: 14),
+                                  horizontal: 18, vertical: 14),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
                             icon: const Icon(Icons.arrow_forward, size: 18),
-                            label: const Text(
-                              'Lanjut ke Checkout',
-                              style: TextStyle(
+                            label: Text(
+                              'Checkout (${selectedItems.length})',
+                              style: const TextStyle(
                                   fontSize: 14, fontWeight: FontWeight.bold),
                             ),
-                            onPressed: _isProcessing
-                                ? null
-                                : () async {
+                            onPressed: canCheckout
+                                ? () async {
                                     await Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (_) => const CheckoutPage(),
+                                        builder: (_) => CheckoutPage(
+                                          selectedItemIds:
+                                              _selectedItemIds!.toList(),
+                                        ),
                                       ),
                                     );
                                     _reload();
-                                  },
+                                  }
+                                : null,
                           ),
                         ],
                       ),
@@ -1923,10 +2090,20 @@ class _KeranjangPageState extends State<KeranjangPage> {
 }
 
 // ---------------------------------------------------------------------------
+// Penyimpanan Informasi Checkout Terakhir
+// ---------------------------------------------------------------------------
+class AlamatTersimpan {
+  static String? nama;
+  static String? alamat;
+  static String? kota;
+}
+
+// ---------------------------------------------------------------------------
 // Halaman Checkout (CheckoutPage) - Tahap 5
 // ---------------------------------------------------------------------------
 class CheckoutPage extends StatefulWidget {
-  const CheckoutPage({super.key});
+  final List<int>? selectedItemIds;
+  const CheckoutPage({super.key, this.selectedItemIds});
 
   @override
   State<CheckoutPage> createState() => _CheckoutPageState();
@@ -1957,6 +2134,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
   @override
   void initState() {
     super.initState();
+    // Auto-fill alamat tersimpan jika tersedia
+    if (AlamatTersimpan.nama != null && AlamatTersimpan.nama!.isNotEmpty) {
+      _namaController.text = AlamatTersimpan.nama!;
+    }
+    if (AlamatTersimpan.alamat != null && AlamatTersimpan.alamat!.isNotEmpty) {
+      _alamatController.text = AlamatTersimpan.alamat!;
+    }
+    if (AlamatTersimpan.kota != null && AlamatTersimpan.kota!.isNotEmpty) {
+      _kotaController.text = AlamatTersimpan.kota!;
+    }
+
     // Idempotency key diinisialisasi sekali dan tidak diganti saat retry timeout
     _idempotencyKey = const Uuid().v4();
     _futureKurir = _api.fetchKurir();
@@ -1982,6 +2170,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       final summary = await _api.fetchKeranjang(
         kurirId: _selectedKurir?.id,
         wilayahId: _selectedWilayah?.id,
+        itemIds: widget.selectedItemIds,
       );
       if (!mounted) return;
       setState(() {
@@ -2054,6 +2243,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         wilayahId: _selectedWilayah!.id,
         kurirId: _selectedKurir!.id,
         metodePembayaran: _metodePembayaran,
+        itemIds: widget.selectedItemIds,
       );
 
       final order = await _api.checkout(
@@ -2061,13 +2251,21 @@ class _CheckoutPageState extends State<CheckoutPage> {
         idempotencyKey: _idempotencyKey,
       );
 
+      // Simpan alamat untuk checkout berikutnya
+      AlamatTersimpan.nama = _namaController.text.trim();
+      AlamatTersimpan.alamat = _alamatController.text.trim();
+      AlamatTersimpan.kota = _kotaController.text.trim();
+
       if (!mounted) return;
 
-      // Navigasi ke Halaman Konfirmasi Pesanan
+      // Navigasi langsung ke rincian pesanan dengan akses pembayaran jelas (poin 9)
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => KonfirmasiPesananPage(order: order),
+          builder: (_) => RincianPesananPage(
+            pesananId: order.id,
+            nomorPesanan: order.nomorPesanan,
+          ),
         ),
       );
     } on ConflictException catch (e) {
@@ -2325,6 +2523,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           child: Column(
                             children: [
                               DropdownButtonFormField<WilayahItem>(
+                                isExpanded: true,
                                 initialValue: _selectedWilayah,
                                 decoration: InputDecoration(
                                   labelText: 'Pilih Wilayah / Kecamatan *',
@@ -2333,9 +2532,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                   errorText: _fieldErrors['wilayah_id'],
                                 ),
                                 items: wilayahList.map((w) {
+                                  final isSukun = w.nama.toLowerCase().contains('sukun');
                                   return DropdownMenuItem<WilayahItem>(
                                     value: w,
-                                    child: Text('${w.nama} (${w.kota})'),
+                                    child: Text(
+                                      isSukun
+                                          ? '${w.nama} (${w.kota}) - Asal Toko'
+                                          : '${w.nama} (${w.kota})',
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                    ),
                                   );
                                 }).toList(),
                                 onChanged: (val) {
@@ -2352,6 +2558,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                               ),
                               const SizedBox(height: 12),
                               DropdownButtonFormField<KurirItem>(
+                                isExpanded: true,
                                 initialValue: _selectedKurir,
                                 decoration: InputDecoration(
                                   labelText: 'Pilih Layanan Kurir *',
@@ -2367,6 +2574,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                               k.deskripsi!.isNotEmpty
                                           ? '${k.nama} (${k.deskripsi})'
                                           : k.nama,
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
                                     ),
                                   );
                                 }).toList(),
@@ -2994,11 +3203,29 @@ Widget _buildOrderStatusBadge(String status) {
   String label = status.replaceAll('_', ' ').toUpperCase();
 
   switch (status.toLowerCase()) {
+    case 'menunggu_stok':
+      bg = const Color(0xFFFFF3D6);
+      border = const Color(0xFFE0A32E);
+      text = const Color(0xFF946200);
+      label = 'MENUNGGU STOK';
+      break;
+    case 'menunggu_pembayaran':
+      bg = const Color(0xFFFFF7E6);
+      border = const Color(0xFFFA8C16);
+      text = const Color(0xFFD46B08);
+      label = 'MENUNGGU PEMBAYARAN';
+      break;
     case 'menunggu_konfirmasi':
       bg = const Color(0xFFFFF3D6);
       border = const Color(0xFFE0A32E);
       text = const Color(0xFF946200);
       label = 'MENUNGGU KONFIRMASI';
+      break;
+    case 'dibayar':
+      bg = const Color(0xFFE6F7FF);
+      border = const Color(0xFF1890FF);
+      text = const Color(0xFF096DD9);
+      label = 'DIBAYAR';
       break;
     case 'diproses':
       bg = const Color(0xFFEAF0FF);
@@ -3378,14 +3605,14 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
     });
   }
 
-  Future<void> _konfirmasiPembayaran(Order order) async {
+  Future<void> _updateStatusPengelola(
+      Order order, String statusBaru, String label, String catatanDefault) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Konfirmasi Pembayaran'),
+        title: Text(label),
         content: Text(
-          'Konfirmasi bahwa pembayaran untuk pesanan "${order.nomorPesanan}" '
-          'senilai ${_formatRupiah(order.total)} telah diterima?',
+          'Apakah Anda yakin ingin memperbarui status pesanan "${order.nomorPesanan}" ke "$statusBaru"?',
         ),
         actions: [
           TextButton(
@@ -3411,13 +3638,13 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
     try {
       await _api.updateStatusPesananPengelola(
         id: order.id,
-        status: 'dibayar',
-        catatan: 'Pembayaran dikonfirmasi oleh pengelola',
+        status: statusBaru,
+        catatan: catatanDefault,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Pembayaran pesanan ${order.nomorPesanan} berhasil dikonfirmasi.'),
+          content: Text('Status pesanan ${order.nomorPesanan} berhasil diubah ke "$statusBaru".'),
           backgroundColor: const Color(0xFF2E9E5B),
           behavior: SnackBarBehavior.floating,
         ),
@@ -3437,6 +3664,249 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
         setState(() => _isConfirmingPayment = false);
       }
     }
+  }
+
+  Future<void> _konfirmasiPembayaran(Order order) async {
+    await _updateStatusPengelola(
+      order,
+      'dibayar',
+      'Konfirmasi Pembayaran',
+      'Pembayaran dikonfirmasi oleh pengelola',
+    );
+  }
+
+  Future<void> _konfirmasiBarangSampai(Order order) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Konfirmasi Barang Sampai'),
+        content: Text(
+          'Apakah Anda sudah menerima seluruh pesanan "${order.nomorPesanan}" dengan kondisi baik dan lengkap?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Belum'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2E9E5B),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Ya, Barang Sudah Sampai'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isConfirmingPayment = true);
+
+    try {
+      await _api.updateStatusPesanan(
+        id: order.id,
+        status: 'selesai',
+        catatan: 'Barang telah diterima oleh pembeli',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Terima kasih! Pesanan telah selesai.'),
+          backgroundColor: Color(0xFF2E9E5B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _reload();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_formatErrorMessage(e)),
+          backgroundColor: const Color(0xFFE14B4B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isConfirmingPayment = false);
+      }
+    }
+  }
+
+  void _tampilkanSimulasiAtm(Order order) {
+    final vaNumber = '8806${order.id.toString().padLeft(6, '0')}';
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2F6BFF).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.account_balance,
+                      color: Color(0xFF2F6BFF), size: 24),
+                ),
+                const SizedBox(width: 12),
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Bank ATK Mart Virtual Account',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      'Simulasi Pembayaran ATM & Internet Banking',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF8A8A93)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8F9FA),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE6E6EC)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Nomor Virtual Account',
+                          style: TextStyle(
+                              fontSize: 12, color: Color(0xFF8A8A93))),
+                      SelectableText(
+                        vaNumber,
+                        style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2F6BFF)),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Total Tagihan',
+                          style: TextStyle(
+                              fontSize: 12, color: Color(0xFF8A8A93))),
+                      Text(
+                        _formatRupiah(order.total),
+                        style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF15151A)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Petunjuk Pembayaran ATM Bank ATK Mart:',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            _buildAtmStep('1',
+                'Masukkan kartu ATM dan 6 digit PIN Bank ATK Mart Anda.'),
+            _buildAtmStep('2',
+                'Pilih menu Pembayaran / Transfer > Virtual Account.'),
+            _buildAtmStep(
+                '3', 'Masukkan nomor Virtual Account: $vaNumber.'),
+            _buildAtmStep('4',
+                'Periksa nominal tagihan ${_formatRupiah(order.total)} dan tekan Benar.'),
+            _buildAtmStep(
+                '5', 'Simpan struk transaksi ATM sebagai bukti pembayaran.'),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2E9E5B),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: const Icon(Icons.check_circle_outline),
+                label: const Text(
+                  'Konfirmasi Pembayaran Selesai',
+                  style:
+                      TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _laporkanSudahBayar(order);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAtmStep(String number, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 18,
+            height: 18,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(
+              color: Color(0xFFEAF0FF),
+              shape: BoxShape.circle,
+            ),
+            child: Text(number,
+                style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2F6BFF))),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+              child: Text(text,
+                  style: const TextStyle(
+                      fontSize: 12, color: Color(0xFF15151A)))),
+        ],
+      ),
+    );
   }
 
   Future<void> _laporkanSudahBayar(Order order) async {
@@ -3603,17 +4073,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
           final items = order.items ?? [];
           final histories = order.riwayatStatus ?? [];
 
-          final rawMetode = (order.metodePembayaran ?? '').toLowerCase();
-          final isCod = rawMetode.contains('cod') || rawMetode.contains('tunai');
-          final isTransfer = !isCod &&
-              (rawMetode.contains('transfer') ||
-                  rawMetode.contains('manual') ||
-                  rawMetode.contains('bank'));
-          final canBuyerConfirmPayment = !widget.isPengelola &&
-              order.status == 'menunggu_pembayaran' &&
-              isTransfer;
-
-          return SingleChildScrollView(
+          final content = SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -3688,6 +4148,31 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                               ),
                             ),
                           ],
+                        ),
+                      ],
+                      if (order.status == 'menunggu_stok') ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF9E6),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFFFD591)),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.hourglass_top,
+                                  size: 20, color: Color(0xFFD46B08)),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Pesanan pre-order ini sedang menunggu ketersediaan stok dari toko sebelum pembayaran atau pemrosesan.',
+                                  style: TextStyle(
+                                      fontSize: 12, color: Color(0xFF873800)),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ],
@@ -4089,172 +4574,332 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                   ),
                 ],
 
-                if (widget.isPengelola && order.status == 'menunggu_konfirmasi') ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEAF5EF),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: const Color(0xFF2E9E5B).withValues(alpha: 0.5),
-                        width: 1.2,
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.verified_outlined,
-                                color: Color(0xFF2E9E5B), size: 20),
-                            SizedBox(width: 8),
-                            Text(
-                              'Aksi Pengelola: Konfirmasi Pembayaran',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF2E9E5B),
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Pembeli telah melaporkan pembayaran. Tekan tombol di bawah untuk memverifikasi dan mengubah status menjadi "dibayar".',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF15151A),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF2E9E5B),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            icon: _isConfirmingPayment
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor:
-                                          AlwaysStoppedAnimation(Colors.white),
-                                    ),
-                                  )
-                                : const Icon(Icons.check_circle_outline),
-                            label: Text(
-                              _isConfirmingPayment
-                                  ? 'Memproses...'
-                                  : 'Konfirmasi Pembayaran',
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            onPressed: _isConfirmingPayment
-                                ? null
-                                : () => _konfirmasiPembayaran(order),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-
-                if (canBuyerConfirmPayment) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEBF1FF),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: const Color(0xFF2F6BFF).withValues(alpha: 0.5),
-                        width: 1.2,
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.payment,
-                                color: Color(0xFF2F6BFF), size: 20),
-                            SizedBox(width: 8),
-                            Text(
-                              'Konfirmasi Pembayaran Transfer',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF2F6BFF),
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Silakan transfer sebesar ${_formatRupiah(order.total)} ke rekening toko. '
-                          'Setelah transfer selesai, tekan tombol di bawah untuk melaporkan pembayaran.',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF15151A),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF2F6BFF),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            icon: _isConfirmingPayment
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor:
-                                          AlwaysStoppedAnimation(Colors.white),
-                                    ),
-                                  )
-                                : const Icon(Icons.check_circle_outline),
-                            label: Text(
-                              _isConfirmingPayment
-                                  ? 'Mengirim...'
-                                  : 'Saya Sudah Bayar',
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            onPressed: _isConfirmingPayment
-                                ? null
-                                : () => _laporkanSudahBayar(order),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
               ],
             ),
+          );
+
+          final stickyAction = _buildStickyBottomAction(order);
+
+          return Column(
+            children: [
+              Expanded(child: content),
+              if (stickyAction != null)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 10,
+                        offset: const Offset(0, -3),
+                      ),
+                    ],
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: stickyAction,
+                  ),
+                ),
+            ],
           );
         },
       ),
     );
+  }
+
+  Widget? _buildStickyBottomAction(Order order) {
+    final rawMetode = (order.metodePembayaran ?? '').toLowerCase();
+    final isCod = rawMetode.contains('cod') || rawMetode.contains('tunai');
+    final isTransfer = !isCod &&
+        (rawMetode.contains('transfer') ||
+            rawMetode.contains('manual') ||
+            rawMetode.contains('bank'));
+
+    // Sisi Pengelola Toko
+    if (widget.isPengelola) {
+      if (order.status == 'menunggu_stok') {
+        final targetStatus = isCod ? 'menunggu_konfirmasi' : 'menunggu_pembayaran';
+        return SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE0A32E),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: _isConfirmingPayment
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2))
+                : const Icon(Icons.inventory_outlined),
+            label: const Text('Konfirmasi Stok Tersedia',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            onPressed: _isConfirmingPayment
+                ? null
+                : () => _updateStatusPengelola(
+                      order,
+                      targetStatus,
+                      'Konfirmasi Stok Tersedia',
+                      'Stok fisik telah tersedia dan dialokasikan untuk pesanan',
+                    ),
+          ),
+        );
+      }
+
+      if (order.status == 'menunggu_konfirmasi') {
+        if (isCod) {
+          return SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2E9E5B),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: _isConfirmingPayment
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2))
+                  : const Icon(Icons.check_circle_outline),
+              label: const Text('Konfirmasi Pesanan COD (Diproses)',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              onPressed: _isConfirmingPayment
+                  ? null
+                  : () => _updateStatusPengelola(
+                        order,
+                        'diproses',
+                        'Konfirmasi Pesanan COD',
+                        'Pesanan COD dikonfirmasi dan mulai diproses',
+                      ),
+            ),
+          );
+        } else {
+          return SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2E9E5B),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: _isConfirmingPayment
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2))
+                  : const Icon(Icons.verified_outlined),
+              label: const Text('Konfirmasi Pembayaran (Dibayar)',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              onPressed: _isConfirmingPayment
+                  ? null
+                  : () => _konfirmasiPembayaran(order),
+            ),
+          );
+        }
+      }
+
+      if (order.status == 'dibayar') {
+        return SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2F6BFF),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: _isConfirmingPayment
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2))
+                : const Icon(Icons.schedule_send_outlined),
+            label: const Text('Mulai Proses Pesanan (Diproses)',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            onPressed: _isConfirmingPayment
+                ? null
+                : () => _updateStatusPengelola(
+                      order,
+                      'diproses',
+                      'Proses Pesanan',
+                      'Pesanan sedang disiapkan di toko',
+                    ),
+          ),
+        );
+      }
+
+      if (order.status == 'diproses') {
+        return SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF7B1FA2),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: _isConfirmingPayment
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2))
+                : const Icon(Icons.local_shipping_outlined),
+            label: const Text('Kirim Pesanan (Dikirim)',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            onPressed: _isConfirmingPayment
+                ? null
+                : () => _updateStatusPengelola(
+                      order,
+                      'dikirim',
+                      'Kirim Pesanan',
+                      'Pesanan sedang dalam pengiriman kurir',
+                    ),
+          ),
+        );
+      }
+
+      if (order.status == 'dikirim') {
+        return SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2E9E5B),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: _isConfirmingPayment
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2))
+                : const Icon(Icons.task_alt),
+            label: const Text('Selesaikan Pesanan (Selesai)',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            onPressed: _isConfirmingPayment
+                ? null
+                : () => _updateStatusPengelola(
+                      order,
+                      'selesai',
+                      'Selesaikan Pesanan',
+                      'Pesanan telah diterima dan transaksi selesai',
+                    ),
+          ),
+        );
+      }
+
+      return null;
+    }
+
+    // Sisi Pembeli
+    if (order.status == 'menunggu_pembayaran' && isTransfer) {
+      return Row(
+        children: [
+          Expanded(
+            child: SizedBox(
+              height: 48,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2F6BFF),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: const Icon(Icons.account_balance, size: 18),
+                label: const Text('Simulasi ATM',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 13),
+                    overflow: TextOverflow.ellipsis),
+                onPressed: _isConfirmingPayment
+                    ? null
+                    : () => _tampilkanSimulasiAtm(order),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: SizedBox(
+              height: 48,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF2E9E5B),
+                  side:
+                      const BorderSide(color: Color(0xFF2E9E5B), width: 1.5),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: _isConfirmingPayment
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            color: Color(0xFF2E9E5B), strokeWidth: 2))
+                    : const Icon(Icons.check_circle_outline, size: 18),
+                label: const Text('Saya Sudah Bayar',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 13),
+                    overflow: TextOverflow.ellipsis),
+                onPressed: _isConfirmingPayment
+                    ? null
+                    : () => _laporkanSudahBayar(order),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (order.status == 'dikirim') {
+      return SizedBox(
+        width: double.infinity,
+        height: 48,
+        child: ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF2E9E5B),
+            foregroundColor: Colors.white,
+            elevation: 1,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
+          ),
+          icon: _isConfirmingPayment
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2))
+              : const Icon(Icons.thumb_up_alt_outlined),
+          label: const Text(
+            'Barang Sudah Sampai',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+          onPressed: _isConfirmingPayment
+              ? null
+              : () => _konfirmasiBarangSampai(order),
+        ),
+      );
+    }
+
+    return null;
   }
 }
 
@@ -5324,14 +5969,14 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
 
   String _formatErrorMessage(Object error) => formatAppErrorMessage(error);
 
-  Future<void> _konfirmasiPembayaran(Order order) async {
+  Future<void> _updateStatusPesanan(
+      Order order, String statusBaru, String label, String catatan) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Konfirmasi Pembayaran'),
+        title: Text(label),
         content: Text(
-          'Konfirmasi bahwa pembayaran untuk pesanan "${order.nomorPesanan}" '
-          'sebesar ${_formatRupiah(order.total)} telah diterima oleh pengelola?',
+          'Konfirmasi untuk memperbarui pesanan "${order.nomorPesanan}" ke status "$statusBaru"?',
         ),
         actions: [
           TextButton(
@@ -5357,14 +6002,14 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
     try {
       await _api.updateStatusPesananPengelola(
         id: order.id,
-        status: 'dibayar',
-        catatan: 'Pembayaran dikonfirmasi oleh pengelola',
+        status: statusBaru,
+        catatan: catatan,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Pembayaran pesanan ${order.nomorPesanan} berhasil dikonfirmasi menjadi "dibayar".',
+            'Status pesanan ${order.nomorPesanan} berhasil diubah ke "$statusBaru".',
           ),
           backgroundColor: const Color(0xFF2E9E5B),
           behavior: SnackBarBehavior.floating,
@@ -5385,6 +6030,15 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
         setState(() => _updatingOrderId = null);
       }
     }
+  }
+
+  Future<void> _konfirmasiPembayaran(Order order) async {
+    await _updateStatusPesanan(
+      order,
+      'dibayar',
+      'Konfirmasi Pembayaran',
+      'Pembayaran dikonfirmasi oleh pengelola',
+    );
   }
 
   List<Order> _applyFilter(List<Order> orders) {
@@ -5518,6 +6172,8 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
 
           // Hitung jumlah per status untuk filter bar
           final countSemua = allOrders.length;
+          final countMenungguStok =
+              allOrders.where((o) => o.status == 'menunggu_stok').length;
           final countMenungguKonfirmasi =
               allOrders.where((o) => o.status == 'menunggu_konfirmasi').length;
           final countMenungguPembayaran =
@@ -5546,6 +6202,8 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
                   child: Row(
                     children: [
                       _buildFilterChip('Semua', 'semua', countSemua),
+                      _buildFilterChip('Menunggu Stok',
+                          'menunggu_stok', countMenungguStok),
                       _buildFilterChip('Menunggu Konfirmasi',
                           'menunggu_konfirmasi', countMenungguKonfirmasi),
                       _buildFilterChip('Menunggu Pembayaran',

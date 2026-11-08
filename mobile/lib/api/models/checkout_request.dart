@@ -8,6 +8,7 @@ class CheckoutRequest {
   final int wilayahId;
   final int kurirId;
   final String metodePembayaran;
+  final List<int>? itemIds;
 
   CheckoutRequest({
     required this.namaPenerima,
@@ -16,14 +17,21 @@ class CheckoutRequest {
     required this.wilayahId,
     required this.kurirId,
     required this.metodePembayaran,
+    this.itemIds,
   });
 
-  Map<String, dynamic> toJson() => {
-        'nama_penerima': namaPenerima,
-        'alamat': alamat,
-        'kota': kota,
-        'wilayah_id': wilayahId,
-        'kurir_id': kurirId,
-        'metode_pembayaran': metodePembayaran,
-      };
+  Map<String, dynamic> toJson() {
+    final map = <String, dynamic>{
+      'nama_penerima': namaPenerima,
+      'alamat': alamat,
+      'kota': kota,
+      'wilayah_id': wilayahId,
+      'kurir_id': kurirId,
+      'metode_pembayaran': metodePembayaran,
+    };
+    if (itemIds != null && itemIds!.isNotEmpty) {
+      map['item_ids'] = itemIds;
+    }
+    return map;
+  }
 }
