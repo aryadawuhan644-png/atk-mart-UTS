@@ -1,11 +1,11 @@
 {
-    "name": "atkmart_mobile",
-    "short_name": "atkmart_mobile",
+    "name": "ATK Mart Aoen",
+    "short_name": "ATK Mart Aoen",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F3F6FA",
+    "theme_color": "#011C6B",
+    "description": "Belanja buku dan alat tulis di ATK Mart Aoen.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

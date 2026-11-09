@@ -1012,7 +1012,7 @@ mobile/lib/
 
 ## 17. Penerapan Konsep Sistem Terdistribusi
 
-Bagian ini memetakan topik kelompok/pertemuan ke rancangan ATK Mart. Pemetaan tidak berarti seluruh teknologi harus dipasang. Kebutuhan wajib PDF tetap menjadi prioritas.
+Bagian ini memetakan topik kelompok/pertemuan ke rancangan ATK Mart Aoen. Pemetaan tidak berarti seluruh teknologi harus dipasang. Kebutuhan wajib PDF tetap menjadi prioritas.
 
 ### 17.1 Kelompok 1 — Partial Failure, Redundansi, dan Reliability
 

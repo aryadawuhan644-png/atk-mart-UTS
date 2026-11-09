@@ -1,8 +1,9 @@
-# Panduan Desain — ATK Mart (Buku & Alat Tulis)
+# Panduan Desain — ATK Mart Aoen (Buku & Alat Tulis)
 
 Acuan visual ini dipakai supaya semua halaman Flutter (Katalog, Rincian Produk,
-Keranjang, Checkout, dst) konsisten satu sama lain. Gaya: bersih, modern,
-rounded, dengan satu layar beraksen gelap (beranda) dan sisanya terang.
+Keranjang, Checkout, dst) konsisten satu sama lain. Gaya bersih, modern, dan
+rounded dengan biru navy `#011C6B`, aksen teal dan amber bercahaya, serta
+latar biru pucat yang tetap nyaman dibaca.
 
 ---
 
@@ -10,22 +11,25 @@ rounded, dengan satu layar beraksen gelap (beranda) dan sisanya terang.
 
 | Token | Hex | Dipakai untuk |
 |---|---|---|
-| `primaryDark` | `#0D0D12` | Latar beranda/hero, teks utama di atas latar terang |
-| `primaryBlue` | `#2F6BFF` | Aksen interaktif: tombol aktif, tab terpilih, link, badge jumlah |
-| `surfaceLight` | `#F5F5F7` | Latar belakang layar (light mode) |
-| `surfaceCard` | `#FFFFFF` | Latar kartu produk, kartu kategori |
-| `surfaceMuted` | `#EDEDF2` | Latar ikon kategori, chip filter tidak aktif |
-| `textPrimary` | `#15151A` | Judul, nama produk, harga |
-| `textSecondary` | `#8A8A93` | Deskripsi singkat, label kecil, placeholder |
-| `success` | `#2E9E5B` | Badge diskon/hemat, status "selesai" |
-| `warning` | `#E0A32E` | Status "menunggu_stok" / "menunggu_pembayaran" |
-| `danger` | `#E14B4B` | Pesan galat, badge stok habis |
-| `border` | `#E6E6EC` | Garis tipis antar elemen, outline input |
+| `primary` | `#011C6B` | Identitas merek, tombol utama, pilihan aktif, dan navigasi |
+| `primaryDark` | `#00134D` | Elemen utama yang memerlukan penekanan |
+| `accent` | `#007F87` | Aksen teal, info, dan variasi visual |
+| `accentWarm` | `#A85D00` | Pre-order, highlight hangat, dan status menunggu |
+| `accentEarth` | `#955A0B` | Aksen cokelat karamel bercahaya untuk akun sekunder dan status dikirim |
+| `surfaceLight` | `#F5F8FF` | Latar layar terang kebiruan |
+| `surfaceCard` | `#FFFFFF` | Latar kartu produk dan kategori |
+| `surfaceMuted` | `#EAF1FF` | Latar ikon kategori dan chip filter tidak aktif |
+| `textPrimary` | `#182B4D` | Judul, nama produk, dan harga |
+| `textSecondary` | `#536887` | Deskripsi singkat, label kecil, dan placeholder |
+| `success` | `#16754B` | Badge diskon/hemat dan status "selesai" |
+| `warning` | `#A85D00` | Status "menunggu_stok" / "menunggu_pembayaran" |
+| `danger` | `#B42318` | Pesan galat dan badge stok habis |
+| `border` | `#D8E3F5` | Garis tipis antar elemen dan outline input |
 
 **Catatan khusus domain:** karena produk kalian ada yang **pre-order**, pakai
 `warning` untuk badge "Pre-Order" (bukan `danger`), supaya beda kesan dari
-"Stok Habis" yang pakai `danger`. Badge "Harga Grosir" pakai `primaryBlue`
-dengan latar `#EAF0FF`.
+"Stok Habis" yang pakai `danger`. Badge "Harga Grosir" pakai `primary`
+dengan latar `#E8F1FB`.
 
 ---
 
@@ -63,9 +67,9 @@ package `google_fonts` di pub.dev, gratis dan dekat dengan gaya mockup).
 ### 4.1 Bottom Navigation
 5 item: **Katalog, Kategori, Keranjang, Riwayat, Profil/Kelola** (sesuaikan
 dengan 7 halaman wajib — boleh gabung "Kelola Produk" ke menu profil kalau
-butuh slot). Item aktif pakai background `primaryBlue` bentuk pill di sekitar
+butuh slot). Item aktif pakai background `primary` bentuk pill di sekitar
 ikon+label, item lain abu-abu (`textSecondary`). Badge jumlah di ikon
-Keranjang: lingkaran kecil `primaryBlue`, teks putih, posisi pojok kanan atas.
+Keranjang: lingkaran kecil `primary`, teks putih, posisi pojok kanan atas.
 
 ### 4.2 Kartu Produk (Katalog — grid/list)
 - Gambar produk 1:1, radius atas 16px.
@@ -94,7 +98,7 @@ Keranjang: lingkaran kecil `primaryBlue`, teks putih, posisi pojok kanan atas.
   qty stepper kecil, ikon hapus (ikon tempat sampah, warna `danger`).
 - Subtotal di card terpisah bagian bawah, latar `surfaceCard`, border atas
   tipis (`border`), total dalam Heading, tombol **"Lanjut ke Checkout"**
-  full-width `primaryBlue`.
+  full-width `primary`.
 
 ### 4.5 Checkout
 - Form alamat: input rounded 12px, border `border`, label di atas input
@@ -109,13 +113,13 @@ Keranjang: lingkaran kecil `primaryBlue`, teks putih, posisi pojok kanan atas.
 ### 4.6 Status Pesanan (badge warna)
 | Status | Warna badge |
 |---|---|
-| `menunggu_stok` | `warning`, latar `#FBF2DD` |
-| `menunggu_pembayaran` | `warning`, latar `#FBF2DD` |
-| `menunggu_konfirmasi` | `primaryBlue`, latar `#EAF0FF` |
-| `dibayar` / `diproses` | `primaryBlue`, latar `#EAF0FF` |
-| `dikirim` | `#6B4EE8`, latar `#F0ECFD` (ungu, biar beda dari diproses) |
-| `selesai` | `success`, latar `#E7F7ED` |
-| `dibatalkan` | `danger`, latar `#FCEAEA` |
+| `menunggu_stok` | `warning`, latar `#F5EDDD` |
+| `menunggu_pembayaran` | `warning`, latar `#F5EDDD` |
+| `menunggu_konfirmasi` | `primary`, latar `#E8F1FB` |
+| `dibayar` / `diproses` | `primary`, latar `#E8F1FB` |
+| `dikirim` | `#955A0B`, latar `#FFF2D6` (cokelat karamel, biar beda dari diproses) |
+| `selesai` | `success`, latar `#EAF3ED` |
+| `dibatalkan` | `danger`, latar `#F8EAEA` |
 
 ### 4.7 Keadaan Layar (4 state wajib)
 - **memuat**: skeleton shimmer abu-abu di bentuk kartu/list (bukan spinner
@@ -130,14 +134,15 @@ Keranjang: lingkaran kecil `primaryBlue`, teks putih, posisi pojok kanan atas.
 
 ## 5. Prinsip Umum
 
-1. **Satu layar gelap saja** (beranda/katalog utama), sisanya terang — jangan
-   dark mode penuh di semua halaman, ikuti pola mockup.
+1. **Gunakan tampilan terang yang konsisten** dengan `#011C6B` sebagai warna
+   utama; tambahkan teal, amber, dan warna status seperlunya agar hierarki
+   informasi jelas tanpa membuat layar monoton atau terlalu jenuh.
 2. **Rounded besar di mana-mana** (16px ke atas untuk elemen utama), hindari
    sudut tajam.
 3. **Jarak putih (whitespace) lega** — jangan padatkan kartu, beri padding 16px
    di dalam setiap kartu.
-4. **Satu warna aksen dominan** (`primaryBlue`) untuk semua elemen interaktif
-   utama, jangan tambah warna aksen lain supaya tetap terasa satu brand.
+4. **Gunakan `primary` sebagai aksi utama**; teal dan amber hanya jadi aksen
+   pendamping untuk membantu hierarki tanpa mengalahkan identitas merek.
 5. **Badge status & label jangan pakai warna sama dengan tombol aksi utama**,
    supaya mata langsung bisa bedakan mana yang bisa diklik dan mana yang cuma
    info.

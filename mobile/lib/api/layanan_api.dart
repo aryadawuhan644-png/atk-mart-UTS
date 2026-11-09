@@ -1,5 +1,5 @@
 // lib/api/layanan_api.dart
-// Full implementation of the 14 Laravel API endpoints for ATK Mart.
+// Full implementation of the 14 Laravel API endpoints for ATK Mart Aoen.
 // Web-compatible: no dart:io imports.
 
 import 'dart:async';
@@ -26,7 +26,7 @@ class ApiException implements Exception {
 }
 
 class NetworkException extends ApiException {
-  const NetworkException([super.message = 'Tidak dapat terhubung ke server ATK Mart. Periksa koneksi internet Anda.']);
+  const NetworkException([super.message = 'Tidak dapat terhubung ke server ATK Mart Aoen. Periksa koneksi internet Anda.']);
 }
 
 class RequestTimeoutException extends ApiException {
@@ -152,7 +152,7 @@ class LayananApi {
           'Permintaan ke server melebihi batas waktu (15 detik). Silakan coba lagi.');
     } catch (_) {
       throw const NetworkException(
-          'Tidak dapat terhubung ke server ATK Mart. Periksa koneksi internet Anda.');
+          'Tidak dapat terhubung ke server ATK Mart Aoen. Periksa koneksi internet Anda.');
     }
 
     final env = _LaravelResponse.parse(response.body, response.statusCode);
