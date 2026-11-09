@@ -6940,60 +6940,113 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                     title: 'Riwayat Status Transaksi',
                     icon: Icons.timeline_outlined,
                     child: Column(
-                      children: histories.map((h) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
+                      children: histories.reversed
+                          .toList()
+                          .asMap()
+                          .entries
+                          .map((entry) {
+                        final index = entry.key;
+                        final h = entry.value;
+                        final isCurrent = index == 0;
+                        final isBottom = index == histories.length - 1;
+                        final dotColor = isCurrent
+                            ? const Color(0xFF2F6BFF)
+                            : const Color(0xFFC9CDD4);
+                        final statusColor = isCurrent
+                            ? const Color(0xFF15151A)
+                            : const Color(0xFF9AA0A6);
+                        final metaColor = isCurrent
+                            ? Colors.grey.shade700
+                            : Colors.grey.shade400;
+                        final timeColor = isCurrent
+                            ? Colors.grey.shade600
+                            : Colors.grey.shade400;
+                        return IntrinsicHeight(
                           child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Container(
-                                margin: const EdgeInsets.only(top: 2),
-                                width: 10,
-                                height: 10,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF2F6BFF),
-                                  shape: BoxShape.circle,
+                              SizedBox(
+                                width: 20,
+                                child: Column(
+                                  children: [
+                                    const SizedBox(height: 10),
+                                    Container(
+                                      width: isCurrent ? 12 : 10,
+                                      height: isCurrent ? 12 : 10,
+                                      decoration: BoxDecoration(
+                                        color: dotColor,
+                                        shape: BoxShape.circle,
+                                        border: isCurrent
+                                            ? Border.all(
+                                                color:
+                                                    const Color(0xFFD6E2FF),
+                                                width: 2,
+                                              )
+                                            : null,
+                                      ),
+                                    ),
+                                    if (!isBottom)
+                                      Expanded(
+                                        child: Center(
+                                          child: CustomPaint(
+                                            size: const Size(1, double.infinity),
+                                            painter:
+                                                _DashedVerticalLinePainter(
+                                              color: const Color(0xFFD5D5DC),
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      const Expanded(child: SizedBox()),
+                                  ],
                                 ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          h.statusBaru
-                                              .replaceAll('_', ' ')
-                                              .toUpperCase(),
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFF15151A),
-                                          ),
-                                        ),
-                                        if (h.createdAt != null)
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 8),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
                                           Text(
-                                            h.createdAt!,
+                                            h.statusBaru
+                                                .replaceAll('_', ' ')
+                                                .toUpperCase(),
                                             style: TextStyle(
-                                              fontSize: 11,
-                                              color: Colors.grey.shade500,
+                                              fontSize: 13,
+                                              fontWeight: isCurrent
+                                                  ? FontWeight.bold
+                                                  : FontWeight.w600,
+                                              color: statusColor,
                                             ),
                                           ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      'Aktor: ${h.aktor}${h.catatan != null && h.catatan!.isNotEmpty ? ' (${h.catatan})' : ''}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade700,
+                                          if (h.createdAt != null)
+                                            Text(
+                                              h.createdAt!,
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: timeColor,
+                                              ),
+                                            ),
+                                        ],
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Aktor: ${h.aktor}${h.catatan != null && h.catatan!.isNotEmpty ? ' (${h.catatan})' : ''}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: metaColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],
@@ -9181,4 +9234,34 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
       ),
     );
   }
+}
+
+class _DashedVerticalLinePainter extends CustomPainter {
+  _DashedVerticalLinePainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+    const dashHeight = 4.0;
+    const dashGap = 3.0;
+    final x = size.width / 2;
+    double y = 0;
+    while (y < size.height) {
+      canvas.drawLine(
+        Offset(x, y),
+        Offset(x, (y + dashHeight).clamp(0, size.height)),
+        paint,
+      );
+      y += dashHeight + dashGap;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedVerticalLinePainter oldDelegate) =>
+      oldDelegate.color != color;
 }
