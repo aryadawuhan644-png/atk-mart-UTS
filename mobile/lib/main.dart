@@ -1295,11 +1295,18 @@ class _ProdukListPageState extends State<ProdukListPage> {
 
   final TextEditingController _searchController = TextEditingController();
   String _selectedKategori = 'Semua';
+  String _selectedSort = 'Default';
 
   static const List<String> _kategoriList = [
     'Semua',
     'Alat Tulis',
     'Buku & Perlengkapan Belajar',
+  ];
+
+  static const List<String> _sortOptions = [
+    'Default',
+    'Harga Termurah',
+    'Harga Termahal',
   ];
 
   @override
@@ -1754,7 +1761,75 @@ class _ProdukListPageState extends State<ProdukListPage> {
 
           const SizedBox(height: 8),
 
-          // 3. Daftar Produk (FutureBuilder)
+          // 3. Pilihan Pengurutan Produk Berdasarkan Harga
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.swap_vert_rounded,
+                      size: 18,
+                      color: Colors.grey.shade600,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Urutkan:',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  height: 36,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: const Color(0xFFE6E6EC),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedSort,
+                      isDense: true,
+                      icon: const Icon(Icons.keyboard_arrow_down,
+                          size: 18, color: Color(0xFF2F6BFF)),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF15151A),
+                      ),
+                      items: _sortOptions.map((opt) {
+                        return DropdownMenuItem<String>(
+                          value: opt,
+                          child: Text(opt),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null && val != _selectedSort) {
+                          setState(() {
+                            _selectedSort = val;
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 4),
+
+          // 4. Daftar Produk (FutureBuilder)
           Expanded(
             child: FutureBuilder<List<Product>>(
               future: _futureProduk,
@@ -1797,8 +1872,8 @@ class _ProdukListPageState extends State<ProdukListPage> {
                   );
                 }
 
-                final produkList = snapshot.data ?? [];
-                if (produkList.isEmpty) {
+                final rawList = snapshot.data ?? [];
+                if (rawList.isEmpty) {
                   return Center(
                     child: Padding(
                       padding: const EdgeInsets.all(24.0),
@@ -1820,13 +1895,15 @@ class _ProdukListPageState extends State<ProdukListPage> {
                             ),
                           ),
                           if (_searchController.text.isNotEmpty ||
-                              _selectedKategori != 'Semua') ...[
+                              _selectedKategori != 'Semua' ||
+                              _selectedSort != 'Default') ...[
                             const SizedBox(height: 12),
                             OutlinedButton(
                               onPressed: () {
                                 _searchController.clear();
                                 setState(() {
                                   _selectedKategori = 'Semua';
+                                  _selectedSort = 'Default';
                                   _futureProduk = _fetchData();
                                 });
                               },
@@ -1839,6 +1916,14 @@ class _ProdukListPageState extends State<ProdukListPage> {
                   );
                 }
 
+                // Salin list produk agar data sumber asli tidak termutasi
+                final List<Product> produkList = List<Product>.from(rawList);
+                if (_selectedSort == 'Harga Termurah') {
+                  produkList.sort((a, b) => a.harga.compareTo(b.harga));
+                } else if (_selectedSort == 'Harga Termahal') {
+                  produkList.sort((a, b) => b.harga.compareTo(a.harga));
+                }
+
                 return RefreshIndicator(
                   onRefresh: () async => _reload(),
                   child: ListView.builder(
@@ -1846,8 +1931,6 @@ class _ProdukListPageState extends State<ProdukListPage> {
                     itemCount: produkList.length,
                     itemBuilder: (context, index) {
                       final produk = produkList[index];
-                      debugPrint('NAMA PRODUK: ${produk.nama}');
-debugPrint('URL GAMBAR: ${produk.gambar}');
                       return Card(
                         color: Colors.white,
                         elevation: 0.8,
