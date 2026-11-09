@@ -3610,7 +3610,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
   Future<void> _updateItemQty(CartItem item, int newQty) async {
     if (_isProcessing) return;
     if (newQty <= 0) {
-      await _confirmDeleteItem(item);
+      if (await _confirmDeleteItem(item)) _reload();
       return;
     }
 
@@ -3620,6 +3620,12 @@ class _KeranjangPageState extends State<KeranjangPage> {
 
     try {
       await _api.updateKeranjang(id: item.id, jumlah: newQty);
+      final quantityChange = newQty - item.jumlah;
+      if (quantityChange > 0) {
+        StateKeranjang.increment(quantityChange);
+      } else {
+        StateKeranjang.decrement(-quantityChange);
+      }
       _reload();
     } on ConflictException catch (e) {
       if (!mounted) return;
@@ -3667,7 +3673,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
     }
   }
 
-  Future<void> _confirmDeleteItem(CartItem item) async {
+  Future<bool> _confirmDeleteItem(CartItem item) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -3693,7 +3699,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
       ),
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true) return false;
 
     setState(() {
       _isProcessing = true;
@@ -3701,7 +3707,8 @@ class _KeranjangPageState extends State<KeranjangPage> {
 
     try {
       await _api.deleteKeranjang(item.id);
-      if (!mounted) return;
+      StateKeranjang.decrement(item.jumlah);
+      if (!mounted) return true;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('"${item.nama}" telah dihapus dari keranjang.'),
@@ -3709,9 +3716,9 @@ class _KeranjangPageState extends State<KeranjangPage> {
           behavior: SnackBarBehavior.floating,
         ),
       );
-      _reload();
+      return true;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(formatAppErrorMessage(e)),
@@ -3719,6 +3726,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
           behavior: SnackBarBehavior.floating,
         ),
       );
+      return false;
     } finally {
       if (mounted) {
         setState(() {
@@ -3922,177 +3930,219 @@ class _KeranjangPageState extends State<KeranjangPage> {
                     final item = items[index];
                     final isChecked = _selectedItemIds!.contains(item.id);
 
-                    return Card(
-                      color: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
-                          color: isChecked
-                              ? const Color(0xFF2563EB).withValues(alpha: 0.6)
-                              : const Color(0xFFE2E8F0),
-                          width: isChecked ? 1.2 : 0.8,
+                    return Dismissible(
+                      key: ValueKey(item.produkId),
+                      direction: _isProcessing
+                          ? DismissDirection.none
+                          : DismissDirection.endToStart,
+                      confirmDismiss: (_) => _confirmDeleteItem(item),
+                      onDismissed: (_) => _reload(),
+                        background: const SizedBox.shrink(),
+                      secondaryBackground: Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.delete_outline, color: Colors.white),
+                            SizedBox(width: 8),
+                            Text(
+                              'Hapus',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Checkbox(
-                                  value: isChecked,
-                                  activeColor: const Color(0xFF2563EB),
-                                  onChanged: _isProcessing
-                                      ? null
-                                      : (val) {
-                                          setState(() {
-                                            if (val == true) {
-                                              _selectedItemIds!.add(item.id);
-                                            } else {
-                                              _selectedItemIds!.remove(item.id);
+                      child: Card(
+                        color: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: isChecked
+                                ? const Color(0xFF2563EB).withValues(alpha: 0.6)
+                                : const Color(0xFFE2E8F0),
+                            width: isChecked ? 1.2 : 0.8,
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Checkbox(
+                                    value: isChecked,
+                                    activeColor: const Color(0xFF2563EB),
+                                    onChanged: _isProcessing
+                                        ? null
+                                        : (val) {
+                                            setState(() {
+                                              if (val == true) {
+                                                _selectedItemIds!.add(item.id);
+                                              } else {
+                                                _selectedItemIds!.remove(
+                                                  item.id,
+                                                );
+                                              }
+                                            });
+                                          },
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item.nama,
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF172554),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Harga satuan: ${_formatRupiah(item.hargaSatuan)}',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Color(0xFF64748B),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete_outline,
+                                      size: 20,
+                                      color: Color(0xFFDC2626),
+                                    ),
+                                    tooltip: 'Hapus item',
+                                    onPressed: _isProcessing
+                                        ? null
+                                        : () async {
+                                            if (await _confirmDeleteItem(
+                                              item,
+                                            )) {
+                                              _reload();
                                             }
-                                          });
-                                        },
-                                ),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                          },
+                                  ),
+                                ],
+                              ),
+                              const Divider(
+                                height: 16,
+                                color: Color(0xFFF1F5F9),
+                              ),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  // Stepper Kuantitas
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF1F5F9),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: const Color(0xFFE2E8F0),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: Icon(
+                                            item.jumlah <= 1
+                                                ? Icons.delete_outline
+                                                : Icons.remove,
+                                            size: 16,
+                                            color: item.jumlah <= 1
+                                                ? const Color(0xFFDC2626)
+                                                : const Color(0xFF172554),
+                                          ),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(
+                                            minWidth: 32,
+                                            minHeight: 32,
+                                          ),
+                                          onPressed: _isProcessing
+                                              ? null
+                                              : () => _updateItemQty(
+                                                  item,
+                                                  item.jumlah - 1,
+                                                ),
+                                        ),
+                                        Container(
+                                          constraints: const BoxConstraints(
+                                            minWidth: 32,
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            '${item.jumlah}',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF172554),
+                                            ),
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.add,
+                                            size: 16,
+                                            color: Color(0xFF172554),
+                                          ),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(
+                                            minWidth: 32,
+                                            minHeight: 32,
+                                          ),
+                                          onPressed: _isProcessing
+                                              ? null
+                                              : () => _updateItemQty(
+                                                  item,
+                                                  item.jumlah + 1,
+                                                ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  // Subtotal per item
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
+                                      const Text(
+                                        'Subtotal',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Color(0xFF64748B),
+                                        ),
+                                      ),
                                       Text(
-                                        item.nama,
+                                        _formatRupiah(item.subtotal),
                                         style: const TextStyle(
                                           fontSize: 15,
                                           fontWeight: FontWeight.bold,
                                           color: Color(0xFF172554),
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Harga satuan: ${_formatRupiah(item.hargaSatuan)}',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Color(0xFF64748B),
-                                        ),
-                                      ),
                                     ],
                                   ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    size: 20,
-                                    color: Color(0xFFDC2626),
-                                  ),
-                                  tooltip: 'Hapus item',
-                                  onPressed: _isProcessing
-                                      ? null
-                                      : () => _confirmDeleteItem(item),
-                                ),
-                              ],
-                            ),
-                            const Divider(height: 16, color: Color(0xFFF1F5F9)),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                // Stepper Kuantitas
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF1F5F9),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: const Color(0xFFE2E8F0),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      IconButton(
-                                        icon: Icon(
-                                          item.jumlah <= 1
-                                              ? Icons.delete_outline
-                                              : Icons.remove,
-                                          size: 16,
-                                          color: item.jumlah <= 1
-                                              ? const Color(0xFFDC2626)
-                                              : const Color(0xFF172554),
-                                        ),
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(
-                                          minWidth: 32,
-                                          minHeight: 32,
-                                        ),
-                                        onPressed: _isProcessing
-                                            ? null
-                                            : () => _updateItemQty(
-                                                item,
-                                                item.jumlah - 1,
-                                              ),
-                                      ),
-                                      Container(
-                                        constraints: const BoxConstraints(
-                                          minWidth: 32,
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          '${item.jumlah}',
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFF172554),
-                                          ),
-                                        ),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.add,
-                                          size: 16,
-                                          color: Color(0xFF172554),
-                                        ),
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(
-                                          minWidth: 32,
-                                          minHeight: 32,
-                                        ),
-                                        onPressed: _isProcessing
-                                            ? null
-                                            : () => _updateItemQty(
-                                                item,
-                                                item.jumlah + 1,
-                                              ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-
-                                // Subtotal per item
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    const Text(
-                                      'Subtotal',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Color(0xFF64748B),
-                                      ),
-                                    ),
-                                    Text(
-                                      _formatRupiah(item.subtotal),
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF172554),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ],
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
