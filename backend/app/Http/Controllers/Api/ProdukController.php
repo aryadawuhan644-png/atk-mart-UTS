@@ -30,7 +30,7 @@ class ProdukController extends Controller
                 : null,
 
             'gambar' => $produk->gambar
-                ? url(Storage::url($produk->gambar))
+                ? url("/api/produk/{$produk->id}/gambar")
                 : null,
 
             'pre_order' => (bool) $produk->pre_order,
@@ -109,6 +109,41 @@ class ProdukController extends Controller
             'message' => 'Detail produk berhasil diambil',
             'data' => self::formatProduk($produk),
         ], 200);
+    }
+
+    /**
+     * Endpoint Publik: GET /api/produk/{id}/gambar
+     * Mengembalikan file gambar fisik produk melalui API publik dengan header CORS dan Content-Type yang sesuai.
+     */
+    public function gambar(int $id)
+    {
+        $produk = Produk::find($id);
+
+        if (!$produk || !$produk->gambar) {
+            return response()->json([
+                'status' => 'gagal',
+                'code' => '404',
+                'message' => 'Gambar produk tidak ditemukan',
+                'data' => null,
+            ], 404);
+        }
+
+        if (!Storage::disk('public')->exists($produk->gambar)) {
+            return response()->json([
+                'status' => 'gagal',
+                'code' => '404',
+                'message' => 'File gambar tidak ditemukan di server',
+                'data' => null,
+            ], 404);
+        }
+
+        $fullPath = Storage::disk('public')->path($produk->gambar);
+        $mimeType = Storage::disk('public')->mimeType($produk->gambar) ?: 'image/jpeg';
+
+        return response()->file($fullPath, [
+            'Content-Type' => $mimeType,
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
     }
 
     /**

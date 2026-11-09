@@ -1,11 +1,7 @@
 // test/api/ui_perbaikan_flow_test.dart
-import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:atkmart_mobile/api/api_config.dart';
-import 'package:atkmart_mobile/api/layanan_api.dart';
 import 'package:atkmart_mobile/api/models/order.dart';
 import 'package:atkmart_mobile/main.dart';
 
@@ -50,36 +46,12 @@ void main() {
     testWidgets('AdminDashboardPage menampilkan 2 menu utama pengelola dan info banner', (tester) async {
       SessionPengguna.login(DemoAccount.pengelola);
 
-      final mockClient = MockClient((request) async {
-        if (request.url.path.contains('/pesanan')) {
-          return http.Response(
-            jsonEncode({
-              'status': 'sukses',
-              'data': [],
-            }),
-            200,
-          );
-        }
-        if (request.url.path.contains('/produk')) {
-          return http.Response(
-            jsonEncode({
-              'status': 'sukses',
-              'data': [],
-            }),
-            200,
-          );
-        }
-        return http.Response('{}', 200);
-      });
-
-      final mockApi = LayananApi(client: mockClient);
-
       await tester.pumpWidget(
-        MaterialApp(
-          home: AdminDashboardPage(api: mockApi),
+        const MaterialApp(
+          home: AdminDashboardPage(loadStats: false),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump();
 
       // Verifikasi judul dan banner
       expect(find.text('Dashboard Pengelola'), findsOneWidget);
@@ -156,6 +128,43 @@ void main() {
       // Union harus mencakup semua pesanan
       final union = activeOrderIds.union(completedOrderIds);
       expect(union.length, mockOrders.length);
+    });
+  });
+
+  group('Ketentuan Fitur Gambar Produk', () {
+    test('resolveImageUrl mengembalikan null untuk null atau string kosong', () {
+      expect(resolveImageUrl(null), isNull);
+      expect(resolveImageUrl(''), isNull);
+      expect(resolveImageUrl('   '), isNull);
+    });
+
+    test('resolveImageUrl memetakan endpoint gambar produk ke host ApiConfig aktif', () {
+      final resolved = resolveImageUrl('http://127.0.0.1:8000/api/produk/1/gambar');
+      expect(resolved, isNotNull);
+      expect(resolved, contains('/api/produk/1/gambar'));
+    });
+
+    test('resolveImageUrl mendukung path relatif gambar produk', () {
+      final resolved = resolveImageUrl('/api/produk/5/gambar');
+      expect(resolved, isNotNull);
+      expect(resolved, contains('/api/produk/5/gambar'));
+      expect(resolved!.startsWith('http'), isTrue);
+    });
+
+    testWidgets('ProdukImageWidget menampilkan placeholder otomatis saat imageUrl null', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: ProdukImageWidget(
+              imageUrl: null,
+              width: 80,
+              height: 80,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byIcon(Icons.inventory_2_outlined), findsOneWidget);
     });
   });
 }

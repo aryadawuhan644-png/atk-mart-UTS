@@ -572,7 +572,8 @@ class AtkMartApp extends StatelessWidget {
 // ---------------------------------------------------------------------------
 class AdminDashboardPage extends StatefulWidget {
   final LayananApi? api;
-  const AdminDashboardPage({super.key, this.api});
+  final bool loadStats;
+  const AdminDashboardPage({super.key, this.api, this.loadStats = true});
 
   @override
   State<AdminDashboardPage> createState() => _AdminDashboardPageState();
@@ -587,7 +588,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   @override
   void initState() {
     super.initState();
-    _fetchStats();
+    if (widget.loadStats) {
+      _fetchStats();
+    } else {
+      _isLoading = false;
+    }
   }
 
   Future<void> _fetchStats() async {
@@ -1076,13 +1081,17 @@ String? resolveImageUrl(String? rawUrl) {
 
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
       final imgUri = Uri.parse(trimmed);
-      // Jika host gambar adalah localhost, 127.0.0.1, atau 10.0.2.2,
-      // arahkan selalu ke scheme, host, dan port ApiConfig aktif
-      final isLocalHost = imgUri.host == 'localhost' ||
+      final isBackendPath = imgUri.path.contains('/api/produk/') ||
+          imgUri.path.startsWith('/storage/');
+      final isLocalOrPrivate = imgUri.host == 'localhost' ||
           imgUri.host == '127.0.0.1' ||
-          imgUri.host == '10.0.2.2';
+          imgUri.host == '10.0.2.2' ||
+          imgUri.host.startsWith('192.168.') ||
+          imgUri.host.startsWith('172.') ||
+          imgUri.host.startsWith('10.') ||
+          imgUri.host == targetHost;
 
-      if (isLocalHost) {
+      if (isBackendPath || isLocalOrPrivate) {
         return imgUri
             .replace(
               scheme: targetScheme,
@@ -1150,33 +1159,39 @@ class ProdukImageWidget extends StatelessWidget {
       return placeholder();
     }
 
-    return ClipRRect(
-      borderRadius: radius,
-      child: Image.network(
-        resolved,
-        key: ValueKey(resolved),
-        width: width,
-        height: height,
-        fit: fit,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Container(
+    return ValueListenableBuilder<int>(
+      valueListenable: produkUpdateNotifier,
+      builder: (context, tick, _) {
+        final cacheKey = tick > 0 ? '$resolved?v=$tick' : resolved;
+        return ClipRRect(
+          borderRadius: radius,
+          child: Image.network(
+            cacheKey,
+            key: ValueKey(cacheKey),
             width: width,
             height: height,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF4F5F7),
-              borderRadius: radius,
-            ),
-            alignment: Alignment.center,
-            child: const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) => placeholder(),
-      ),
+            fit: fit,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Container(
+                width: width,
+                height: height,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF4F5F7),
+                  borderRadius: radius,
+                ),
+                alignment: Alignment.center,
+                child: const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) => placeholder(),
+          ),
+        );
+      },
     );
   }
 }
