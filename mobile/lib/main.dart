@@ -131,7 +131,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
       MaterialPageRoute(
         builder: (_) => account.role == 'pengelola'
             ? const AdminDashboardPage()
-            : const ProdukListPage(),
+            : const PembeliShellPage(),
       ),
     );
   }
@@ -558,7 +558,7 @@ class AtkMartApp extends StatelessWidget {
       home: SessionPengguna.isLoggedIn
           ? (SessionPengguna.isPengelola
               ? const AdminDashboardPage()
-              : const ProdukListPage())
+              : const PembeliShellPage())
           : const LoginDemoPage(),
     );
   }
@@ -1053,6 +1053,89 @@ String formatAppErrorMessage(Object error) {
 }
 
 // ---------------------------------------------------------------------------
+// Shell Navigasi Pembeli (PembeliShellPage)
+// Menyatukan Katalog, Pesanan Saya, Riwayat, dan Keranjang dalam bottom bar.
+// ---------------------------------------------------------------------------
+class PembeliShellPage extends StatefulWidget {
+  const PembeliShellPage({super.key});
+
+  @override
+  State<PembeliShellPage> createState() => _PembeliShellPageState();
+}
+
+class _PembeliShellPageState extends State<PembeliShellPage> {
+  int _currentIndex = 0;
+  final Set<int> _visited = {0};
+  final List<int> _refreshTicks = [0, 0, 0, 0];
+
+  void _onDestinationSelected(int index) {
+    setState(() {
+      if (index == _currentIndex) {
+        // Tap ulang tab aktif berfungsi sebagai muat ulang data.
+        _refreshTicks[index]++;
+      }
+      _currentIndex = index;
+      _visited.add(index);
+    });
+  }
+
+  Widget _buildTab(int index) {
+    if (!_visited.contains(index)) {
+      return const SizedBox.shrink();
+    }
+    final key = ValueKey('pembeli-tab-$index-${_refreshTicks[index]}');
+    switch (index) {
+      case 0:
+        return ProdukListPage(key: key);
+      case 1:
+        return PesananSayaPage(key: key, embedded: true);
+      case 2:
+        return RiwayatPesananPage(key: key, embedded: true);
+      case 3:
+        return KeranjangPage(key: key, embedded: true);
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: IndexedStack(
+        index: _currentIndex,
+        children: List.generate(4, _buildTab),
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentIndex,
+        onDestinationSelected: _onDestinationSelected,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.storefront_outlined),
+            selectedIcon: Icon(Icons.storefront),
+            label: 'Katalog',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.local_shipping_outlined),
+            selectedIcon: Icon(Icons.local_shipping),
+            label: 'Pesanan',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.history_rounded),
+            selectedIcon: Icon(Icons.history),
+            label: 'Riwayat',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.shopping_cart_outlined),
+            selectedIcon: Icon(Icons.shopping_cart),
+            label: 'Keranjang',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Halaman Katalog Produk (ProdukListPage)
 // ---------------------------------------------------------------------------
 class ProdukListPage extends StatefulWidget {
@@ -1393,64 +1476,9 @@ class _ProdukListPageState extends State<ProdukListPage> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          // Pintasan Cepat Pesanan Pembeli (Pesanan Aktif & Riwayat Selesai)
-          Row(
-        children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF2F6BFF),
-                side: const BorderSide(color: Color(0xFFC7D7FE)),
-                backgroundColor: const Color(0xFFF0F5FF),
-                padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
-                minimumSize: const Size(0, 32),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-              ),
-              icon: const Icon(Icons.local_shipping_outlined, size: 15),
-              label: const Text(
-                'Pesanan Saya',
-                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PesananSayaPage()),
-                );
-              },
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF2E9E5B),
-                side: const BorderSide(color: Color(0xFFB7EB8F)),
-                backgroundColor: const Color(0xFFF6FFED),
-                padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
-                minimumSize: const Size(0, 32),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-              ),
-              icon: const Icon(Icons.history_rounded, size: 15),
-              label: const Text(
-                'Riwayat Selesai',
-                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const RiwayatPesananPage()),
-                );
-              },
-            ),
-          ),
         ],
       ),
-    ],
-  ),
-);
+    );
   }
 
   @override
@@ -1463,36 +1491,6 @@ class _ProdukListPageState extends State<ProdukListPage> {
         ),
         centerTitle: false,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.local_shipping_outlined),
-            tooltip: 'Pesanan Saya (Aktif)',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const PesananSayaPage()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.history_rounded),
-            tooltip: 'Riwayat Pesanan (Selesai)',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const RiwayatPesananPage()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.shopping_cart_outlined),
-            tooltip: 'Keranjang Belanja',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const KeranjangPage()),
-              );
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Segarkan',
@@ -2624,7 +2622,8 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
 // Halaman Keranjang Belanja (KeranjangPage) - Tahap 4
 // ---------------------------------------------------------------------------
 class KeranjangPage extends StatefulWidget {
-  const KeranjangPage({super.key});
+  final bool embedded;
+  const KeranjangPage({super.key, this.embedded = false});
 
   @override
   State<KeranjangPage> createState() => _KeranjangPageState();
@@ -2777,6 +2776,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: !widget.embedded,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -4410,7 +4410,8 @@ Widget _buildOrderStatusBadge(String status) {
 // Menampilkan seluruh pesanan yang belum selesai (status != 'selesai')
 // ---------------------------------------------------------------------------
 class PesananSayaPage extends StatefulWidget {
-  const PesananSayaPage({super.key});
+  final bool embedded;
+  const PesananSayaPage({super.key, this.embedded = false});
 
   @override
   State<PesananSayaPage> createState() => _PesananSayaPageState();
@@ -4467,6 +4468,7 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: !widget.embedded,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -4480,16 +4482,17 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.history_rounded),
-            tooltip: 'Riwayat Selesai',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const RiwayatPesananPage()),
-              );
-            },
-          ),
+          if (!widget.embedded)
+            IconButton(
+              icon: const Icon(Icons.history_rounded),
+              tooltip: 'Riwayat Selesai',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const RiwayatPesananPage()),
+                );
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Segarkan',
@@ -4909,7 +4912,8 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
 // Khusus menampilkan pesanan yang telah selesai (status == 'selesai')
 // ---------------------------------------------------------------------------
 class RiwayatPesananPage extends StatefulWidget {
-  const RiwayatPesananPage({super.key});
+  final bool embedded;
+  const RiwayatPesananPage({super.key, this.embedded = false});
 
   @override
   State<RiwayatPesananPage> createState() => _RiwayatPesananPageState();
@@ -4937,6 +4941,7 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: !widget.embedded,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -4950,16 +4955,17 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.local_shipping_outlined),
-            tooltip: 'Pesanan Saya (Aktif)',
-            onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const PesananSayaPage()),
-              );
-            },
-          ),
+          if (!widget.embedded)
+            IconButton(
+              icon: const Icon(Icons.local_shipping_outlined),
+              tooltip: 'Pesanan Saya (Aktif)',
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PesananSayaPage()),
+                );
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Segarkan',
