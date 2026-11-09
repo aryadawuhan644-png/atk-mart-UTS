@@ -6,6 +6,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 
 import 'api_config.dart';
 import 'models/cart_item.dart';
@@ -216,28 +217,160 @@ class LayananApi {
   // 3. POST /produk (pengelola only)
   // payload: {nama, harga, kategori, stok, tersedia?, deskripsi?,
   //           pre_order?, estimasi_tersedia?, harga_grosir?[]}
+  // Mendukung multipart/form-data saat mengunggah gambar produk baru.
   // ---------------------------------------------------------------------------
-  Future<Product> createProduk(Map<String, dynamic> payload) => _request(
-        () => _client.post(
-          _uri('/produk'),
-          headers: ApiConfig.pengelolaHeaders(),
-          body: jsonEncode(payload),
-        ),
-        (data) => Product.fromJson(data as Map<String, dynamic>),
+  Future<Product> createProduk(
+    Map<String, dynamic> payload, {
+    XFile? gambarFile,
+    List<int>? gambarBytes,
+    String? gambarNama,
+  }) {
+    if (gambarFile != null || (gambarBytes != null && gambarBytes.isNotEmpty)) {
+      return _sendMultipartProduk(
+        method: 'POST',
+        uri: _uri('/produk'),
+        payload: payload,
+        gambarFile: gambarFile,
+        gambarBytes: gambarBytes,
+        gambarNama: gambarNama,
       );
+    }
+
+    return _request(
+      () => _client.post(
+        _uri('/produk'),
+        headers: ApiConfig.pengelolaHeaders(),
+        body: jsonEncode(payload),
+      ),
+      (data) => Product.fromJson(data as Map<String, dynamic>),
+    );
+  }
 
   // ---------------------------------------------------------------------------
   // 4. PUT /produk/{id} (pengelola only)
+  // Mendukung multipart/form-data via method spoofing _method=PUT saat unggah gambar baru.
+  // Jika gambar tidak diganti (gambarFile & gambarBytes null), pertahankan gambar lama.
   // ---------------------------------------------------------------------------
-  Future<Product> updateProduk(int id, Map<String, dynamic> payload) =>
-      _request(
-        () => _client.put(
-          _uri('/produk/$id'),
-          headers: ApiConfig.pengelolaHeaders(),
-          body: jsonEncode(payload),
-        ),
-        (data) => Product.fromJson(data as Map<String, dynamic>),
+  Future<Product> updateProduk(
+    int id,
+    Map<String, dynamic> payload, {
+    XFile? gambarFile,
+    List<int>? gambarBytes,
+    String? gambarNama,
+  }) {
+    if (gambarFile != null || (gambarBytes != null && gambarBytes.isNotEmpty)) {
+      return _sendMultipartProduk(
+        method: 'PUT',
+        uri: _uri('/produk/$id'),
+        payload: payload,
+        gambarFile: gambarFile,
+        gambarBytes: gambarBytes,
+        gambarNama: gambarNama,
       );
+    }
+
+    return _request(
+      () => _client.put(
+        _uri('/produk/$id'),
+        headers: ApiConfig.pengelolaHeaders(),
+        body: jsonEncode(payload),
+      ),
+      (data) => Product.fromJson(data as Map<String, dynamic>),
+    );
+  }
+
+  /// Kirim data produk via multipart/form-data (misal saat menyertakan berkas gambar).
+  /// Untuk mode edit (PUT), memanfaatkan method spoofing _method=PUT dan header
+  /// X-HTTP-Method-Override karena backend Laravel tidak mem-parsing multipart pada HTTP PUT native.
+  /// Header Authorization pengelola tetap disertakan, dan Content-Type dibiarkan diatur
+  /// otomatis oleh http.MultipartRequest (bukan application/json).
+  Future<Product> _sendMultipartProduk({
+    required String method,
+    required Uri uri,
+    required Map<String, dynamic> payload,
+    XFile? gambarFile,
+    List<int>? gambarBytes,
+    String? gambarNama,
+  }) async {
+    final request = http.MultipartRequest('POST', uri);
+
+    final token = ApiConfig.tokenPengelola;
+    if (token.isEmpty) {
+      throw StateError(
+        'Token pengelola belum dikonfigurasi. '
+        'Pastikan assets/config/env.json terisi atau gunakan --dart-define=STATIC_TOKEN=...',
+      );
+    }
+
+    request.headers['Authorization'] = 'Bearer $token';
+    request.headers['Accept'] = 'application/json';
+
+    if (method.toUpperCase() == 'PUT') {
+      request.fields['_method'] = 'PUT';
+      request.headers['X-HTTP-Method-Override'] = 'PUT';
+    }
+
+    payload.forEach((key, value) {
+      if (key == 'harga_grosir') {
+        if (value is List) {
+          for (var i = 0; i < value.length; i++) {
+            final tier = value[i];
+            if (tier is Map) {
+              final minKuantitas = tier['min_kuantitas'];
+              final hargaSatuan = tier['harga_satuan'];
+              if (minKuantitas != null) {
+                request.fields['harga_grosir[$i][min_kuantitas]'] =
+                    minKuantitas.toString();
+              }
+              if (hargaSatuan != null) {
+                request.fields['harga_grosir[$i][harga_satuan]'] =
+                    hargaSatuan.toString();
+              }
+            }
+          }
+        }
+      } else if (key == 'gambar') {
+        // Abaikan field gambar berbasis string URL jika ada
+      } else if (value != null) {
+        if (value is bool) {
+          request.fields[key] = value ? '1' : '0';
+        } else {
+          request.fields[key] = value.toString();
+        }
+      }
+    });
+
+    if (gambarBytes != null && gambarBytes.isNotEmpty) {
+      final name = (gambarNama != null && gambarNama.isNotEmpty)
+          ? gambarNama
+          : 'produk.jpg';
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'gambar',
+          gambarBytes,
+          filename: name,
+        ),
+      );
+    } else if (gambarFile != null) {
+      final bytes = await gambarFile.readAsBytes();
+      final name = gambarFile.name.isNotEmpty ? gambarFile.name : 'produk.jpg';
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'gambar',
+          bytes,
+          filename: name,
+        ),
+      );
+    }
+
+    return _request(
+      () async {
+        final streamed = await _client.send(request);
+        return http.Response.fromStream(streamed);
+      },
+      (data) => Product.fromJson(data as Map<String, dynamic>),
+    );
+  }
 
   // ---------------------------------------------------------------------------
   // 5. DELETE /produk/{id} (pengelola only)

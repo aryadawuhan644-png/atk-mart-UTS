@@ -2,7 +2,9 @@
 // Entry point for ATK Mart mobile app.
 // Uses only setState, Navigator, and callbacks (no Provider/Riverpod/Bloc).
 
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'api/api_config.dart';
 import 'api/layanan_api.dart';
@@ -1052,6 +1054,133 @@ String formatAppErrorMessage(Object error) {
   return cleaned;
 }
 
+/// Notifier global untuk sinkronisasi pembaruan data & gambar produk secara instan
+/// antara tampilan pengelola/admin dan pembeli.
+final ValueNotifier<int> produkUpdateNotifier = ValueNotifier<int>(0);
+
+/// Resolusi URL gambar produk dari API lokal/remote.
+/// Menangani path relatif, pemetaan localhost/127.0.0.1/10.0.2.2 ke host dan port
+/// aktif ApiConfig.baseUrl (misal 127.0.0.1:8000), serta nilai null/kosong.
+String? resolveImageUrl(String? rawUrl) {
+  if (rawUrl == null || rawUrl.trim().isEmpty) return null;
+  final trimmed = rawUrl.trim();
+  try {
+    final baseUri = Uri.parse(ApiConfig.baseUrl);
+    final targetScheme = baseUri.scheme.isNotEmpty ? baseUri.scheme : 'http';
+    final targetHost = baseUri.host.isNotEmpty ? baseUri.host : '127.0.0.1';
+    final targetPort = baseUri.hasPort
+        ? baseUri.port
+        : (targetHost == '127.0.0.1' || targetHost == 'localhost' || targetHost == '10.0.2.2'
+            ? 8000
+            : null);
+
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      final imgUri = Uri.parse(trimmed);
+      // Jika host gambar adalah localhost, 127.0.0.1, atau 10.0.2.2,
+      // arahkan selalu ke scheme, host, dan port ApiConfig aktif
+      final isLocalHost = imgUri.host == 'localhost' ||
+          imgUri.host == '127.0.0.1' ||
+          imgUri.host == '10.0.2.2';
+
+      if (isLocalHost) {
+        return imgUri
+            .replace(
+              scheme: targetScheme,
+              host: targetHost,
+              port: targetPort,
+            )
+            .toString();
+      }
+      return trimmed;
+    }
+
+    // Path relatif dari server (misal: /storage/produk/abc.jpg)
+    final path = trimmed.startsWith('/') ? trimmed : '/$trimmed';
+    final authority = targetPort != null ? '$targetHost:$targetPort' : targetHost;
+    return '$targetScheme://$authority$path';
+  } catch (_) {
+    return trimmed;
+  }
+}
+
+/// Widget untuk menampilkan gambar produk dari URL dengan placeholder otomatis
+/// jika gambar belum tersedia atau gagal dimuat dari server.
+class ProdukImageWidget extends StatelessWidget {
+  final String? imageUrl;
+  final double? width;
+  final double? height;
+  final BorderRadius? borderRadius;
+  final BoxFit fit;
+  final IconData placeholderIcon;
+
+  const ProdukImageWidget({
+    super.key,
+    required this.imageUrl,
+    this.width,
+    this.height,
+    this.borderRadius,
+    this.fit = BoxFit.cover,
+    this.placeholderIcon = Icons.inventory_2_outlined,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = borderRadius ?? BorderRadius.circular(8);
+    final resolved = resolveImageUrl(imageUrl);
+
+    Widget placeholder() {
+      return Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF4F5F7),
+          borderRadius: radius,
+          border: Border.all(color: const Color(0xFFE6E6EC), width: 0.8),
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          placeholderIcon,
+          size: (height != null && height! < 70) ? 24 : 36,
+          color: const Color(0xFF8A8A93),
+        ),
+      );
+    }
+
+    if (resolved == null || resolved.isEmpty) {
+      return placeholder();
+    }
+
+    return ClipRRect(
+      borderRadius: radius,
+      child: Image.network(
+        resolved,
+        key: ValueKey(resolved),
+        width: width,
+        height: height,
+        fit: fit,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            width: width,
+            height: height,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF4F5F7),
+              borderRadius: radius,
+            ),
+            alignment: Alignment.center,
+            child: const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) => placeholder(),
+      ),
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Shell Navigasi Pembeli (PembeliShellPage)
 // Menyatukan Katalog, Pesanan Saya, Riwayat, dan Keranjang dalam bottom bar.
@@ -1162,10 +1291,12 @@ class _ProdukListPageState extends State<ProdukListPage> {
   void initState() {
     super.initState();
     _futureProduk = _fetchData();
+    produkUpdateNotifier.addListener(_reload);
   }
 
   @override
   void dispose() {
+    produkUpdateNotifier.removeListener(_reload);
     _searchController.dispose();
     super.dispose();
   }
@@ -1190,9 +1321,13 @@ class _ProdukListPageState extends State<ProdukListPage> {
   }
 
   void _reload() {
-    setState(() {
-      _futureProduk = _fetchData();
-    });
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
+    if (mounted) {
+      setState(() {
+        _futureProduk = _fetchData();
+      });
+    }
   }
 
   String _formatErrorMessage(Object error) => formatAppErrorMessage(error);
@@ -1689,95 +1824,117 @@ class _ProdukListPageState extends State<ProdukListPage> {
                   );
                 }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.only(top: 4, bottom: 20),
-                  itemCount: produkList.length,
-                  itemBuilder: (context, index) {
-                    final produk = produkList[index];
-                    return Card(
-                      color: Colors.white,
-                      elevation: 0.8,
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 6),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        side: const BorderSide(
-                            color: Color(0xFFE6E6EC), width: 0.8),
-                      ),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(14),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ProdukDetailPage(produk: produk),
-                          ),
+                return RefreshIndicator(
+                  onRefresh: () async => _reload(),
+                  child: ListView.builder(
+                    padding: const EdgeInsets.only(top: 4, bottom: 20),
+                    itemCount: produkList.length,
+                    itemBuilder: (context, index) {
+                      final produk = produkList[index];
+                      debugPrint('NAMA PRODUK: ${produk.nama}');
+debugPrint('URL GAMBAR: ${produk.gambar}');
+                      return Card(
+                        color: Colors.white,
+                        elevation: 0.8,
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 6),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          side: const BorderSide(
+                              color: Color(0xFFE6E6EC), width: 0.8),
                         ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    ProdukDetailPage(produk: produk),
+                              ),
+                            );
+                            if (mounted) _reload();
+                          },
                         child: Padding(
                           padding: const EdgeInsets.all(14),
-                          child: Column(
+                          child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      produk.nama,
+                              ProdukImageWidget(
+                                imageUrl: produk.gambar,
+                                width: 84,
+                                height: 84,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            produk.nama,
+                                            style: const TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF15151A),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _buildStatusBadge(produk),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      produk.kategori,
                                       style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF15151A),
+                                        fontSize: 12,
+                                        color: Color(0xFF8A8A93),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  _buildStatusBadge(produk),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                produk.kategori,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF8A8A93),
-                                ),
-                              ),
-                              if (produk.deskripsi != null &&
-                                  produk.deskripsi!.isNotEmpty) ...[
-                                const SizedBox(height: 6),
-                                Text(
-                                  produk.deskripsi!,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey.shade800,
-                                  ),
-                                ),
-                              ],
-                              const SizedBox(height: 10),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
+                                    if (produk.deskripsi != null &&
+                                        produk.deskripsi!.isNotEmpty) ...[
+                                      const SizedBox(height: 6),
                                       Text(
-                                        _formatRupiah(produk.harga),
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF15151A),
+                                        produk.deskripsi!,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey.shade800,
                                         ),
                                       ),
-                                      _buildGrosirPill(produk),
                                     ],
-                                  ),
-                                  _buildActionButton(produk),
-                                ],
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              _formatRupiah(produk.harga),
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF15151A),
+                                              ),
+                                            ),
+                                            _buildGrosirPill(produk),
+                                          ],
+                                        ),
+                                        _buildActionButton(produk),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -1785,7 +1942,8 @@ class _ProdukListPageState extends State<ProdukListPage> {
                       ),
                     );
                   },
-                );
+                ),
+              );
               },
             ),
           ),
@@ -1818,12 +1976,23 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
   void initState() {
     super.initState();
     _futureDetail = _api.fetchProdukDetail(widget.produk.id);
+    produkUpdateNotifier.addListener(_reload);
+  }
+
+  @override
+  void dispose() {
+    produkUpdateNotifier.removeListener(_reload);
+    super.dispose();
   }
 
   void _reload() {
-    setState(() {
-      _futureDetail = _api.fetchProdukDetail(widget.produk.id);
-    });
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
+    if (mounted) {
+      setState(() {
+        _futureDetail = _api.fetchProdukDetail(widget.produk.id);
+      });
+    }
   }
 
   /// Menghitung harga satuan efektif berdasarkan kuantitas stepper
@@ -2209,6 +2378,17 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Gambar Produk
+                      Center(
+                        child: ProdukImageWidget(
+                          imageUrl: product.gambar,
+                          width: double.infinity,
+                          height: 220,
+                          borderRadius: BorderRadius.circular(14),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                       // Nama & Badge Status
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -6596,12 +6776,23 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
   void initState() {
     super.initState();
     _futureProduk = _api.fetchProduk();
+    produkUpdateNotifier.addListener(_reload);
+  }
+
+  @override
+  void dispose() {
+    produkUpdateNotifier.removeListener(_reload);
+    super.dispose();
   }
 
   void _reload() {
-    setState(() {
-      _futureProduk = _api.fetchProduk();
-    });
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
+    if (mounted) {
+      setState(() {
+        _futureProduk = _api.fetchProduk();
+      });
+    }
   }
 
   String _formatErrorMessage(Object error) => formatAppErrorMessage(error);
@@ -6638,6 +6829,9 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
 
     try {
       await _api.deleteProduk(produk.id);
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+      produkUpdateNotifier.value++;
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -6782,26 +6976,39 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
             );
           }
 
-          return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-            itemCount: produkList.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 10),
-            itemBuilder: (context, index) {
-              final p = produkList[index];
-              return Card(
-                color: Colors.white,
-                elevation: 0.8,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: const BorderSide(
-                      color: Color(0xFFE6E6EC), width: 0.8),
-                ),
-                child: Padding(
+          return RefreshIndicator(
+            onRefresh: () async => _reload(),
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+              itemCount: produkList.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
+              itemBuilder: (context, index) {
+                final p = produkList[index];
+                return Card(
+                  color: Colors.white,
+                  elevation: 0.8,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: const BorderSide(
+                        color: Color(0xFFE6E6EC), width: 0.8),
+                  ),
+                  child: Padding(
                   padding: const EdgeInsets.all(14),
-                  child: Column(
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Baris atas: Nama + badge status
+                      ProdukImageWidget(
+                        imageUrl: p.gambar,
+                        width: 72,
+                        height: 72,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Baris atas: Nama + badge status
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -6893,15 +7100,19 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
                     ],
                   ),
                 ),
-              );
+              ],
+            ),
+          ),
+        );
             },
-          );
-        },
-      ),
-    );
-  }
+          ),
+        );
+      },
+    ),
+  );
+}
 
-  Widget _buildProdukStatusBadge(Product p) {
+Widget _buildProdukStatusBadge(Product p) {
     if (!p.tersedia) {
       return _adminBadge('Nonaktif', const Color(0xFFF5F5F7),
           Colors.grey.shade400, Colors.grey.shade700);
@@ -6970,6 +7181,11 @@ class _FormProdukPageState extends State<FormProdukPage> {
   // Daftar tier harga grosir yang bisa ditambah/hapus
   final List<Map<String, TextEditingController>> _grosirTiers = [];
 
+  // Gambar produk (image_picker)
+  XFile? _selectedImageFile;
+  Uint8List? _selectedImageBytes;
+  final ImagePicker _imagePicker = ImagePicker();
+
   bool _isSubmitting = false;
   Map<String, String> _fieldErrors = {};
 
@@ -6979,6 +7195,40 @@ class _FormProdukPageState extends State<FormProdukPage> {
   ];
 
   bool get _isEditMode => widget.produk != null;
+
+  Future<void> _pickImage() async {
+    try {
+      final picked = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+      if (picked != null) {
+        final bytes = await picked.readAsBytes();
+        setState(() {
+          _selectedImageFile = picked;
+          _selectedImageBytes = bytes;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal memilih gambar dari galeri: $e'),
+          backgroundColor: const Color(0xFFE14B4B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  void _clearSelectedImage() {
+    setState(() {
+      _selectedImageFile = null;
+      _selectedImageBytes = null;
+    });
+  }
 
   @override
   void initState() {
@@ -7112,10 +7362,24 @@ class _FormProdukPageState extends State<FormProdukPage> {
 
     try {
       if (_isEditMode) {
-        await _api.updateProduk(widget.produk!.id, payload);
+        await _api.updateProduk(
+          widget.produk!.id,
+          payload,
+          gambarFile: _selectedImageFile,
+          gambarBytes: _selectedImageBytes,
+        );
       } else {
-        await _api.createProduk(payload);
+        await _api.createProduk(
+          payload,
+          gambarFile: _selectedImageFile,
+          gambarBytes: _selectedImageBytes,
+        );
       }
+
+      // Bersihkan cache gambar & picu pembaruan instan ke seluruh tampilan (admin & pembeli)
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+      produkUpdateNotifier.value++;
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -7197,6 +7461,10 @@ class _FormProdukPageState extends State<FormProdukPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // === Section: Foto Produk ===
+              _buildImageSection(),
+              const SizedBox(height: 16),
+
               // === Section: Informasi Dasar ===
               _sectionTitle('Informasi Dasar', Icons.inventory_outlined),
               const SizedBox(height: 10),
@@ -7566,6 +7834,194 @@ class _FormProdukPageState extends State<FormProdukPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildImageSection() {
+    final bool hasNewImage = _selectedImageBytes != null;
+    final bool hasExistingImage = _isEditMode &&
+        widget.produk?.gambar != null &&
+        widget.produk!.gambar!.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle('Foto Produk', Icons.photo_camera_back_outlined),
+        const SizedBox(height: 10),
+        _sectionCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (hasNewImage) ...[
+                // Preview gambar baru yang dipilih dari galeri
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Stack(
+                    children: [
+                      Image.memory(
+                        _selectedImageBytes!,
+                        width: double.infinity,
+                        height: 180,
+                        fit: BoxFit.cover,
+                      ),
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2E9E5B),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'Gambar Baru Dipilih',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon:
+                            const Icon(Icons.photo_library_outlined, size: 18),
+                        label: const Text('Ganti Gambar Lain'),
+                        onPressed: _isSubmitting ? null : _pickImage,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline,
+                          color: Color(0xFFE14B4B)),
+                      tooltip: 'Batalkan pilihan gambar ini',
+                      onPressed: _isSubmitting ? null : _clearSelectedImage,
+                    ),
+                  ],
+                ),
+              ] else if (hasExistingImage) ...[
+                // Preview gambar lama yang tersimpan di server
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Stack(
+                    children: [
+                      ProdukImageWidget(
+                        imageUrl: widget.produk!.gambar,
+                        width: double.infinity,
+                        height: 180,
+                        fit: BoxFit.cover,
+                      ),
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xBF0D0D12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'Gambar Saat Ini',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Jika tidak diganti, gambar ini akan tetap dipertahankan.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    label: const Text('Ganti Gambar dari Galeri'),
+                    onPressed: _isSubmitting ? null : _pickImage,
+                  ),
+                ),
+              ] else ...[
+                // Belum ada gambar
+                Container(
+                  width: double.infinity,
+                  height: 140,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: const Color(0xFFD0D5DD),
+                      style: BorderStyle.solid,
+                      width: 1,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.add_photo_alternate_outlined,
+                        size: 40,
+                        color: Colors.grey.shade500,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Belum ada gambar produk',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Format JPG, PNG, atau WEBP (maks. 2MB)',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2F6BFF),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    icon: const Icon(Icons.photo_library_outlined, size: 18),
+                    label: const Text('Pilih Gambar dari Galeri'),
+                    onPressed: _isSubmitting ? null : _pickImage,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 
