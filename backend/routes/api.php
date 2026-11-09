@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Route;
 
 // Endpoint Publik: Katalog dan Kurir
 Route::get('/produk', [ProdukController::class, 'index']);
+Route::get('/produk/{id}/gambar', [ProdukController::class, 'gambar']);
 Route::get('/produk/{id}', [ProdukController::class, 'show']);
 Route::get('/kurir', [KurirController::class, 'index']);
 

@@ -21,16 +21,17 @@ return [
     'allowed_origins' => [],
 
     'allowed_origins_patterns' => [
-        '#^http://(localhost|127\.0\.0\.1)(:\d+)?$#',
+        '#^https?://(localhost|127\.0\.0\.1|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$#',
     ],
 
     'allowed_headers' => [
-        'Authorization',
-        'Content-Type',
-        'Accept',
-        'X-Requested-With',
-        'X-Kunci-Idempoten',
-    ],
+    'Authorization',
+    'Content-Type',
+    'Accept',
+    'X-Requested-With',
+    'X-Kunci-Idempoten',
+    'X-HTTP-Method-Override',
+],
 
     'exposed_headers' => [],
 
