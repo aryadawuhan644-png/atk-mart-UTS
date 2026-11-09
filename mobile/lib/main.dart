@@ -36,6 +36,23 @@ class DemoAccount {
   final IconData icon;
   final Color color;
 
+  String get namaPelanggan {
+    final idx = subNama.indexOf('(');
+    if (idx != -1) return subNama.substring(0, idx).trim();
+    return subNama;
+  }
+
+  String get idPelanggan {
+    final start = subNama.indexOf('(');
+    final end = subNama.indexOf(')');
+    if (start != -1 && end != -1 && end > start) {
+      return subNama.substring(start + 1, end).trim();
+    }
+    final match = RegExp(r'#\d+').firstMatch(subNama);
+    if (match != null) return match.group(0)!;
+    return id;
+  }
+
   const DemoAccount({
     required this.id,
     required this.nama,
@@ -1508,7 +1525,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
     showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Keluar dari Akun Demo'),
+        title: const Text('Konfirmasi Ganti Akun'),
         content: Text(
           'Anda sedang menggunakan ${account?.nama ?? "akun demo"}.\n\n'
           'Keluar untuk berganti ke akun lain? Token akun sebelumnya tidak akan digunakan lagi.',
@@ -1524,7 +1541,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Keluar'),
+            child: const Text('Ya, ganti'),
           ),
         ],
       ),
@@ -1540,13 +1557,218 @@ class _ProdukListPageState extends State<ProdukListPage> {
     });
   }
 
+  void _showAccountDetailBottomSheet(
+      BuildContext context, DemoAccount account) {
+    showModalBottomSheet(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Indikator drag handle
+                Container(
+                  width: 38,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 18),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD1D5DB),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // Avatar Akun
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: account.color.withValues(alpha: 0.12),
+                  child: Icon(account.icon, size: 32, color: account.color),
+                ),
+                const SizedBox(height: 12),
+                // Nama Akun dan Badge Peran
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        account.nama,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF15151A),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: account.color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                            color: account.color.withValues(alpha: 0.25)),
+                      ),
+                      child: Text(
+                        account.role.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.bold,
+                          color: account.color,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                // Informasi Detail Pelanggan (Tanpa Token)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                  ),
+                  child: Column(
+                    children: [
+                      // Nama Pelanggan
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: account.color.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(Icons.person_outline_rounded,
+                                size: 18, color: account.color),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Nama Pelanggan',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Color(0xFF6B7280),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  account.namaPelanggan,
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF15151A),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Divider(
+                            height: 1,
+                            thickness: 0.8,
+                            color: Color(0xFFE5E7EB)),
+                      ),
+                      // ID Pelanggan
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: account.color.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(Icons.tag_rounded,
+                                size: 18, color: account.color),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'ID Pelanggan',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Color(0xFF6B7280),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  account.idPelanggan,
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF15151A),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                // Tombol Ganti Akun (Area sentuh minimal 48 dp)
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFFF5F5),
+                      foregroundColor: const Color(0xFFE14B4B),
+                      elevation: 0,
+                      side: const BorderSide(
+                          color: Color(0xFFFFCCCC), width: 1),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    icon: const Icon(Icons.logout, size: 18),
+                    label: const Text(
+                      'Ganti Akun',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    onPressed: () => _confirmLogout(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildUserIdentityBanner(BuildContext context) {
     final account = SessionPengguna.currentAccount;
     if (account == null) return const SizedBox.shrink();
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 10, 16, 2),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -1559,81 +1781,87 @@ class _ProdukListPageState extends State<ProdukListPage> {
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 17,
-                backgroundColor: account.color.withValues(alpha: 0.12),
-                child: Icon(account.icon, size: 20, color: account.color),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          account.nama,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                            color: Color(0xFF15151A),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: account.color.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            account.role.toUpperCase(),
-                            style: TextStyle(
-                              fontSize: 9.5,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _showAccountDetailBottomSheet(context, account),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 17,
+                  backgroundColor: account.color.withValues(alpha: 0.12),
+                  child: Icon(account.icon, size: 20, color: account.color),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            account.nama,
+                            style: const TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: account.color,
+                              fontSize: 13,
+                              color: Color(0xFF15151A),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      account.subNama,
-                      style:
-                          const TextStyle(fontSize: 11, color: Color(0xFF8A8A93)),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: account.color.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              account.role.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.bold,
+                                color: account.color,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        account.subNama,
+                        style:
+                            const TextStyle(fontSize: 11, color: Color(0xFF8A8A93)),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFE14B4B),
-                  side: const BorderSide(color: Color(0xFFFFCCCC), width: 1),
-                  backgroundColor: const Color(0xFFFFF5F5),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  minimumSize: const Size(0, 30),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFE14B4B),
+                    side: const BorderSide(color: Color(0xFFFFCCCC), width: 1),
+                    backgroundColor: const Color(0xFFFFF5F5),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    minimumSize: const Size(0, 30),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: const Icon(Icons.logout, size: 13),
+                  label: const Text(
+                    'Ganti Akun',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                  onPressed: () => _confirmLogout(context),
                 ),
-                icon: const Icon(Icons.logout, size: 13),
-                label: const Text(
-                  'Ganti Akun',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                ),
-                onPressed: () => _confirmLogout(context),
-              ),
-            ],
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
