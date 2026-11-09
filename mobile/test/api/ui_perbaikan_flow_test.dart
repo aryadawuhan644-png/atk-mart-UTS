@@ -1,6 +1,8 @@
 // test/api/ui_perbaikan_flow_test.dart
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
+import 'package:atkmart_mobile/admin_preferences.dart';
+import 'package:atkmart_mobile/admin_profile_settings.dart';
 import 'package:atkmart_mobile/api/api_config.dart';
 import 'package:atkmart_mobile/api/models/order.dart';
 import 'package:atkmart_mobile/main.dart';
@@ -66,6 +68,39 @@ void main() {
       expect(find.text('Keranjang'), findsNothing);
       expect(find.text('Checkout'), findsNothing);
       expect(find.text('Beli Sekarang'), findsNothing);
+    });
+
+    testWidgets('Halaman profil admin menampilkan profil dan pengaturan lokal', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AdminProfileSettingsPage(
+            initialName: 'Pengelola Toko',
+            email: 'admin@atkmart.id',
+            onLogout: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('Pengelola Toko'), findsOneWidget);
+      expect(find.text('admin@atkmart.id'), findsOneWidget);
+      expect(find.text('Ganti Password'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('Gelap'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Gelap'));
+      await tester.pumpAndSettle();
+      expect(AdminPreferences.themeMode.value, ThemeMode.dark);
+
+      await tester.scrollUntilVisible(find.byType(SwitchListTile), 300);
+      await tester.tap(find.byType(SwitchListTile));
+      await tester.pumpAndSettle();
+      expect(AdminPreferences.notificationsEnabled, isFalse);
+
+      await tester.scrollUntilVisible(find.text('Versi 1.0.0+1'), 300);
+      expect(find.text('Versi 1.0.0+1'), findsOneWidget);
+
+      await AdminPreferences.setThemeMode(ThemeMode.light);
+      await AdminPreferences.setNotificationsEnabled(true);
     });
   });
 

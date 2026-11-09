@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'admin_preferences.dart';
+import 'admin_profile_settings.dart';
 import 'api/api_config.dart';
 import 'api/layanan_api.dart';
 
@@ -21,6 +23,7 @@ import 'core/motion.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ApiConfig.initLocalConfig();
+  await AdminPreferences.initialize();
   runApp(const AtkMartApp());
 }
 
@@ -588,37 +591,56 @@ class AtkMartApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ATK Mart',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF2563EB),
-          primary: const Color(0xFF2563EB),
-          secondary: const Color(0xFF172554),
-          surface: Colors.white,
-        ),
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF1F5F9),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF172554),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          centerTitle: false,
-          iconTheme: IconThemeData(color: Colors.white),
-          titleTextStyle: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            letterSpacing: -0.3,
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: AdminPreferences.themeMode,
+      builder: (context, themeMode, _) => MaterialApp(
+        title: 'ATK Mart',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF2563EB),
+            primary: const Color(0xFF2563EB),
+            secondary: const Color(0xFF172554),
+            surface: Colors.white,
+          ),
+          useMaterial3: true,
+          scaffoldBackgroundColor: const Color(0xFFF1F5F9),
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Color(0xFF172554),
+            foregroundColor: Colors.white,
+            elevation: 0,
+            centerTitle: false,
+            iconTheme: IconThemeData(color: Colors.white),
+            titleTextStyle: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              letterSpacing: -0.3,
+            ),
           ),
         ),
-      ),
-      home: SessionPengguna.isLoggedIn
-          ? (SessionPengguna.isPengelola
+        darkTheme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF60A5FA),
+            brightness: Brightness.dark,
+          ),
+          useMaterial3: true,
+          scaffoldBackgroundColor: const Color(0xFF0F172A),
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Color(0xFF111827),
+            foregroundColor: Colors.white,
+            elevation: 0,
+            centerTitle: false,
+            iconTheme: IconThemeData(color: Colors.white),
+          ),
+        ),
+        themeMode: themeMode,
+        home: SessionPengguna.isLoggedIn
+            ? (SessionPengguna.isPengelola
                 ? const AdminDashboardPage()
                 : const PembeliShellPage())
-          : const LoginDemoPage(),
+            : const LoginDemoPage(),
+      ),
     );
   }
 }
@@ -671,6 +693,20 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     }
   }
 
+  Future<void> _openAdminSettings(DemoAccount account) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AdminProfileSettingsPage(
+          initialName: account.nama,
+          email: account.email,
+          onLogout: () => _confirmLogout(context),
+        ),
+      ),
+    );
+    if (mounted) setState(() {});
+  }
+
   void _confirmLogout(BuildContext context) {
     showDialog<bool>(
       context: context,
@@ -709,9 +745,10 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   @override
   Widget build(BuildContext context) {
     final account = SessionPengguna.currentAccount ?? DemoAccount.pengelola;
+    final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text(
           'Dashboard Pengelola',
@@ -726,6 +763,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               setState(() => _isLoading = true);
               _fetchStats();
             },
+          ),
+          IconButton(
+            icon: const Icon(Icons.manage_accounts_outlined),
+            tooltip: 'Profil & Pengaturan',
+            onPressed: () => _openAdminSettings(account),
           ),
           IconButton(
             icon: const Icon(Icons.logout),
@@ -743,9 +785,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0), width: 0.8),
+                border: Border.all(color: colors.outlineVariant, width: 0.8),
                 boxShadow: [
                   BoxShadow(
                     color: const Color(0xFF172554).withValues(alpha: 0.04),
@@ -773,11 +815,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                         Row(
                           children: [
                             Text(
-                              account.nama,
-                              style: const TextStyle(
+                              AdminPreferences.profileName ?? account.nama,
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
-                                color: Color(0xFF172554),
+                                color: colors.onSurface,
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -804,9 +846,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                         const SizedBox(height: 3),
                         Text(
                           account.subNama,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: Color(0xFF64748B),
+                            color: colors.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -895,6 +937,17 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             ),
             const SizedBox(height: 24),
 
+            _buildAdminMenuCard(
+              context,
+              title: 'Profil & Pengaturan',
+              subtitle:
+                  'Kelola profil admin, tema, notifikasi, dan informasi akun.',
+              icon: Icons.manage_accounts_rounded,
+              color: const Color(0xFF0F766E),
+              onTap: () => _openAdminSettings(account),
+            ),
+            const SizedBox(height: 24),
+
             // Info Box Admin
             Container(
               padding: const EdgeInsets.all(14),
@@ -940,11 +993,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     String? countLabel,
     required VoidCallback onTap,
   }) {
+    final colors = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+        border: Border.all(color: colors.outlineVariant, width: 1),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF172554).withValues(alpha: 0.03),
@@ -985,7 +1039,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF172554),
                               ),
                             ),
                           ),
@@ -1012,7 +1065,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                         subtitle,
                         style: const TextStyle(
                           fontSize: 12.5,
-                          color: Color(0xFF64748B),
                           height: 1.35,
                         ),
                       ),
@@ -1594,10 +1646,10 @@ class _PembeliShellPageState extends State<PembeliShellPage> {
             label: 'Riwayat',
           ),
           NavigationDestination(
-            icon: const AnimatedCartBadgeIcon(
+            icon: AnimatedCartBadgeIcon(
               icon: Icons.shopping_cart_outlined,
             ),
-            selectedIcon: const AnimatedCartBadgeIcon(
+            selectedIcon: AnimatedCartBadgeIcon(
               icon: Icons.shopping_cart,
             ),
             label: 'Keranjang',
