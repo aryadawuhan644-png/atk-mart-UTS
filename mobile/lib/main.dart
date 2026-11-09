@@ -2,8 +2,6 @@
 // Entry point for ATK Mart mobile app.
 // Uses only setState, Navigator, and callbacks (no Provider/Riverpod/Bloc).
 
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
