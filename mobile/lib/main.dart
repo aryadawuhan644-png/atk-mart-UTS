@@ -166,7 +166,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
+      backgroundColor: const Color(0xFFF1F5F9),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
@@ -180,12 +180,12 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2F6BFF),
+                    color: const Color(0xFF172554),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
                         color:
-                            const Color(0xFF2F6BFF).withValues(alpha: 0.3),
+                            const Color(0xFF172554).withValues(alpha: 0.25),
                         blurRadius: 14,
                         offset: const Offset(0, 5),
                       ),
@@ -206,7 +206,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.5,
-                    color: Color(0xFF15151A),
+                    color: Color(0xFF172554),
                   ),
                 ),
               ),
@@ -216,15 +216,15 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEAF0FF),
+                    color: const Color(0xFFEFF6FF),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFC7D7FE)),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.lock_person_outlined,
-                          size: 13, color: Color(0xFF2F6BFF)),
+                          size: 13, color: Color(0xFF2563EB)),
                       SizedBox(width: 5),
                       Text(
                         'MODE DEMO PENGUJIAN',
@@ -232,7 +232,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                           fontSize: 10.5,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.5,
-                          color: Color(0xFF2F6BFF),
+                          color: Color(0xFF2563EB),
                         ),
                       ),
                     ],
@@ -246,7 +246,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF15151A),
+                  color: Color(0xFF172554),
                 ),
               ),
               const SizedBox(height: 4),
@@ -255,7 +255,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12.5,
-                  color: Color(0xFF6B7280),
+                  color: Color(0xFF64748B),
                   height: 1.35,
                 ),
               ),
@@ -293,7 +293,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
                 child: Row(
                   children: [
@@ -319,14 +319,14 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF15151A),
+                              color: Color(0xFF172554),
                             ),
                           ),
                           Text(
                             'Kelola pesanan masuk & produk katalog',
                             style: TextStyle(
                               fontSize: 11,
-                              color: Color(0xFF6B7280),
+                              color: Color(0xFF64748B),
                             ),
                           ),
                         ],
@@ -437,7 +437,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                                 style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w800,
-                                  color: Color(0xFF15151A),
+                                  color: Color(0xFF172554),
                                 ),
                               ),
                               const SizedBox(width: 6),
@@ -464,7 +464,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                             account.subNama,
                             style: const TextStyle(
                               fontSize: 11.5,
-                              color: Color(0xFF6B7280),
+                              color: Color(0xFF64748B),
                             ),
                           ),
                         ],
@@ -478,14 +478,14 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF9FAFB),
+                    color: const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
                   ),
                   child: Row(
                     children: [
                       const Icon(Icons.key_rounded,
-                          size: 13, color: Color(0xFF9CA3AF)),
+                          size: 13, color: Color(0xFF94A3B8)),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
@@ -493,7 +493,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                           style: const TextStyle(
                             fontFamily: 'monospace',
                             fontSize: 11,
-                            color: Color(0xFF4B5563),
+                            color: Color(0xFF475569),
                             fontWeight: FontWeight.w600,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -518,7 +518,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                             pt,
                             style: const TextStyle(
                               fontSize: 11.5,
-                              color: Color(0xFF4B5563),
+                              color: Color(0xFF64748B),
                             ),
                           ),
                         ),
@@ -578,9 +578,27 @@ class AtkMartApp extends StatelessWidget {
       title: 'ATK Mart',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2F6BFF)),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF2563EB),
+          primary: const Color(0xFF2563EB),
+          secondary: const Color(0xFF172554),
+          surface: Colors.white,
+        ),
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF5F5F7),
+        scaffoldBackgroundColor: const Color(0xFFF1F5F9),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF172554),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: false,
+          iconTheme: IconThemeData(color: Colors.white),
+          titleTextStyle: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            letterSpacing: -0.3,
+          ),
+        ),
       ),
       home: SessionPengguna.isLoggedIn
           ? (SessionPengguna.isPengelola
@@ -679,7 +697,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     final account = SessionPengguna.currentAccount ?? DemoAccount.pengelola;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
+      backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
         title: const Text(
           'Dashboard Pengelola',
@@ -713,10 +731,10 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE6E6EC), width: 0.8),
+                border: Border.all(color: const Color(0xFFE2E8F0), width: 0.8),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
+                    color: const Color(0xFF172554).withValues(alpha: 0.04),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -745,7 +763,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
-                                color: Color(0xFF15151A),
+                                color: Color(0xFF172554),
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -772,7 +790,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                           account.subNama,
                           style: const TextStyle(
                             fontSize: 12,
-                            color: Color(0xFF8A8A93),
+                            color: Color(0xFF64748B),
                           ),
                         ),
                       ],
@@ -780,10 +798,10 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                   ),
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFFE14B4B),
+                      foregroundColor: const Color(0xFFDC2626),
                       side:
-                          const BorderSide(color: Color(0xFFFFCCCC), width: 1),
-                      backgroundColor: const Color(0xFFFFF5F5),
+                          const BorderSide(color: Color(0xFFFECACA), width: 1),
+                      backgroundColor: const Color(0xFFFEF2F2),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 6),
                       minimumSize: const Size(0, 32),
@@ -808,13 +826,13 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF15151A),
+                color: Color(0xFF172554),
               ),
             ),
             const SizedBox(height: 6),
             const Text(
               'Kelola katalog barang dan pantau seluruh transaksi pesanan masuk.',
-              style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
             ),
             const SizedBox(height: 18),
 
@@ -825,7 +843,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               subtitle:
                   'Tambah produk baru, ubah harga satuan & grosir, sesuaikan stok ATK, dan konfigurasi ketersediaan pre-order.',
               icon: Icons.inventory_2_rounded,
-              color: const Color(0xFFE67E22),
+              color: const Color(0xFFD97706),
               countLabel: _isLoading ? null : '$_countProduk Produk Terdaftar',
               onTap: () {
                 Navigator.push(
@@ -843,7 +861,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               subtitle:
                   'Konfirmasi stok pre-order, verifikasi pembayaran/COD, dan perbarui tahapan proses pesanan masuk.',
               icon: Icons.assignment_rounded,
-              color: const Color(0xFF2F6BFF),
+              color: const Color(0xFF2563EB),
               countLabel:
                   _isLoading ? null : '$_countPesananMasuk Pesanan Masuk',
               onTap: () {
@@ -901,10 +919,10 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE6E6EC), width: 1),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: const Color(0xFF172554).withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -942,12 +960,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF15151A),
+                                color: Color(0xFF172554),
                               ),
                             ),
                           ),
-                          Icon(Icons.arrow_forward_ios_rounded,
-                              size: 16, color: Colors.grey.shade400),
+                          const Icon(Icons.arrow_forward_ios_rounded,
+                              size: 16, color: Color(0xFF94A3B8)),
                         ],
                       ),
                       if (countLabel != null) ...[
@@ -966,7 +984,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                         subtitle,
                         style: const TextStyle(
                           fontSize: 12.5,
-                          color: Color(0xFF6B7280),
+                          color: Color(0xFF64748B),
                           height: 1.35,
                         ),
                       ),
@@ -1296,6 +1314,11 @@ class _PembeliShellPageState extends State<PembeliShellPage> {
         children: List.generate(4, _buildTab),
       ),
       bottomNavigationBar: NavigationBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: const Color(0xFF172554).withValues(alpha: 0.08),
+        elevation: 8,
+        indicatorColor: const Color(0xFF2563EB).withValues(alpha: 0.12),
         selectedIndex: _currentIndex,
         onDestinationSelected: _onDestinationSelected,
         destinations: const [
@@ -1506,15 +1529,15 @@ class _ProdukListPageState extends State<ProdukListPage> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: Colors.grey.shade200,
+          color: const Color(0xFFF1F5F9),
           borderRadius: BorderRadius.circular(6),
         ),
-        child: Text(
+        child: const Text(
           'Tidak Tersedia',
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: Colors.grey.shade700,
+            color: Color(0xFF64748B),
           ),
         ),
       );
@@ -1527,16 +1550,16 @@ class _ProdukListPageState extends State<ProdukListPage> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFF3D6),
+          color: const Color(0xFFFFFBEB),
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: const Color(0xFFE0A32E), width: 0.8),
+          border: Border.all(color: const Color(0xFFFDE68A), width: 0.8),
         ),
         child: Text(
           'Pre-Order$estimasi',
           style: const TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF946200),
+            color: Color(0xFFD97706),
           ),
         ),
       );
@@ -1545,16 +1568,16 @@ class _ProdukListPageState extends State<ProdukListPage> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFEBEB),
+          color: const Color(0xFFFEF2F2),
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: const Color(0xFFE14B4B), width: 0.8),
+          border: Border.all(color: const Color(0xFFFECACA), width: 0.8),
         ),
         child: const Text(
           'Stok Habis',
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: Color(0xFFB42323),
+            color: Color(0xFFDC2626),
           ),
         ),
       );
@@ -1562,7 +1585,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: const Color(0xFFEBF8EE),
+        color: const Color(0xFFECFDF5),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -1570,7 +1593,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
         style: const TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: Color(0xFF2E9E5B),
+          color: Color(0xFF059669),
         ),
       ),
     );
@@ -1585,15 +1608,15 @@ class _ProdukListPageState extends State<ProdukListPage> {
       margin: const EdgeInsets.only(top: 4),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: const Color(0xFFEAF0FF),
+        color: const Color(0xFFEFF6FF),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: const Color(0xFFBDD3FF), width: 0.8),
+        border: Border.all(color: const Color(0xFFBFDBFE), width: 0.8),
       ),
       child: Text(
         'Grosir: ≥${minTier.minKuantitas} pcs @${_formatRupiah(minTier.hargaSatuan)}',
         style: const TextStyle(
           fontSize: 11,
-          color: Color(0xFF2F6BFF),
+          color: Color(0xFF2563EB),
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -1609,25 +1632,24 @@ class _ProdukListPageState extends State<ProdukListPage> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         constraints: const BoxConstraints(minHeight: 36),
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
+          color: const Color(0xFFF1F5F9),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
         ),
-        child: Text(
-          !p.tersedia ? 'Tidak Tersedia' : 'Stok Habis',
+        child: const Text(
+          'Stok Habis',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: Colors.grey.shade500,
+            color: Color(0xFF94A3B8),
           ),
         ),
       );
     }
 
     final btnColor = isAdded
-        ? const Color(0xFF2E9E5B)
-        : (p.preOrder ? const Color(0xFFE0A32E) : const Color(0xFF2F6BFF));
-
+    ? const Color(0xFF10B981)
+    : (p.preOrder ? const Color(0xFFD97706) : const Color(0xFF172554));
     return PressableScale(
       enableHaptic: true,
       onPressed: () => _beliProduk(p),
@@ -1643,12 +1665,18 @@ class _ProdukListPageState extends State<ProdukListPage> {
             boxShadow: isAdded
                 ? [
                     BoxShadow(
-                      color: const Color(0xFF2E9E5B).withValues(alpha: 0.3),
+                      color: const Color(0xFF10B981).withValues(alpha: 0.3),
                       blurRadius: 6,
                       offset: const Offset(0, 2),
                     ),
                   ]
-                : null,
+                : [
+                    BoxShadow(
+                      color: const Color(0xFF172554).withValues(alpha: 0.12),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
           ),
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 250),
@@ -1702,20 +1730,27 @@ class _ProdukListPageState extends State<ProdukListPage> {
     showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Konfirmasi Ganti Akun'),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Konfirmasi Ganti Akun',
+          style: TextStyle(color: Color(0xFF172554), fontWeight: FontWeight.bold),
+        ),
         content: Text(
           'Anda sedang menggunakan ${account?.nama ?? "akun demo"}.\n\n'
           'Keluar untuk berganti ke akun lain? Token akun sebelumnya tidak akan digunakan lagi.',
+          style: const TextStyle(color: Color(0xFF64748B)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
+            child: const Text('Batal', style: TextStyle(color: Color(0xFF64748B))),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFE14B4B),
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Ya, ganti'),
@@ -1757,7 +1792,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 18),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFD1D5DB),
+                    color: const Color(0xFFCBD5E1),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -1779,7 +1814,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF15151A),
+                          color: Color(0xFF172554),
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1811,9 +1846,9 @@ class _ProdukListPageState extends State<ProdukListPage> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF9FAFB),
+                    color: const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
                   ),
                   child: Column(
                     children: [
@@ -1838,7 +1873,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
                                   'Nama Pelanggan',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: Color(0xFF6B7280),
+                                    color: Color(0xFF64748B),
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -1848,7 +1883,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
                                   style: const TextStyle(
                                     fontSize: 13.5,
                                     fontWeight: FontWeight.w600,
-                                    color: Color(0xFF15151A),
+                                    color: Color(0xFF172554),
                                   ),
                                 ),
                               ],
@@ -1861,7 +1896,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
                         child: Divider(
                             height: 1,
                             thickness: 0.8,
-                            color: Color(0xFFE5E7EB)),
+                            color: Color(0xFFE2E8F0)),
                       ),
                       // ID Pelanggan
                       Row(
@@ -1884,7 +1919,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
                                   'ID Pelanggan',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: Color(0xFF6B7280),
+                                    color: Color(0xFF64748B),
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -1894,7 +1929,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
                                   style: const TextStyle(
                                     fontSize: 13.5,
                                     fontWeight: FontWeight.w600,
-                                    color: Color(0xFF15151A),
+                                    color: Color(0xFF172554),
                                   ),
                                 ),
                               ],
@@ -1949,11 +1984,11 @@ class _ProdukListPageState extends State<ProdukListPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE6E6EC), width: 0.8),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 0.8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 4,
+            color: const Color(0xFF172554).withValues(alpha: 0.04),
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
@@ -1986,7 +2021,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
-                              color: Color(0xFF15151A),
+                              color: Color(0xFF172554),
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -2012,7 +2047,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
                       Text(
                         account.subNama,
                         style:
-                            const TextStyle(fontSize: 11, color: Color(0xFF8A8A93)),
+                            const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
@@ -2084,13 +2119,14 @@ class _ProdukListPageState extends State<ProdukListPage> {
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Cari alat tulis, buku, pulpen...',
-                prefixIcon: const Icon(Icons.search),
+                hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                prefixIcon: const Icon(Icons.search, color: Color(0xFF64748B)),
                 suffixIcon: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (_searchController.text.isNotEmpty)
                       IconButton(
-                        icon: const Icon(Icons.clear, size: 20),
+                        icon: const Icon(Icons.clear, size: 20, color: Color(0xFF64748B)),
                         tooltip: 'Hapus teks',
                         onPressed: () {
                           _searchController.clear();
@@ -2098,7 +2134,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
                         },
                       ),
                     IconButton(
-                      icon: const Icon(Icons.arrow_forward, size: 20),
+                      icon: const Icon(Icons.arrow_forward, size: 20, color: Color(0xFF2563EB)),
                       tooltip: 'Cari',
                       onPressed: _onSearchOrFilterChanged,
                     ),
@@ -2110,16 +2146,16 @@ class _ProdukListPageState extends State<ProdukListPage> {
                     const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFE6E6EC)),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFE6E6EC)),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide:
-                      const BorderSide(color: Color(0xFF2F6BFF), width: 1.5),
+                      const BorderSide(color: Color(0xFF2563EB), width: 1.5),
                 ),
               ),
               onSubmitted: (_) => _onSearchOrFilterChanged(),
@@ -2157,19 +2193,19 @@ class _ProdukListPageState extends State<ProdukListPage> {
                           horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? const Color(0xFF2F6BFF)
+                            ? const Color(0xFF2563EB)
                             : Colors.white,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: isSelected
-                              ? const Color(0xFF2F6BFF)
-                              : const Color(0xFFE6E6EC),
+                              ? const Color(0xFF2563EB)
+                              : const Color(0xFFE2E8F0),
                           width: isSelected ? 1.2 : 0.8,
                         ),
                         boxShadow: isSelected
                             ? [
                                 BoxShadow(
-                                  color: const Color(0xFF2F6BFF)
+                                  color: const Color(0xFF2563EB)
                                       .withValues(alpha: 0.22),
                                   blurRadius: 6,
                                   offset: const Offset(0, 2),
@@ -2184,7 +2220,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
                           fontWeight:
                               isSelected ? FontWeight.bold : FontWeight.w500,
                           color:
-                              isSelected ? Colors.white : const Color(0xFF15151A),
+                              isSelected ? Colors.white : const Color(0xFF64748B),
                         ),
                       ),
                     ),
@@ -2202,20 +2238,20 @@ class _ProdukListPageState extends State<ProdukListPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
+                const Row(
                   children: [
                     Icon(
                       Icons.swap_vert_rounded,
                       size: 18,
-                      color: Colors.grey.shade600,
+                      color: Color(0xFF64748B),
                     ),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     Text(
                       'Urutkan:',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Colors.grey.shade700,
+                        color: Color(0xFF64748B),
                       ),
                     ),
                   ],
@@ -2227,7 +2263,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: const Color(0xFFE6E6EC),
+                      color: const Color(0xFFE2E8F0),
                       width: 0.8,
                     ),
                   ),
@@ -2236,11 +2272,11 @@ class _ProdukListPageState extends State<ProdukListPage> {
                       value: _selectedSort,
                       isDense: true,
                       icon: const Icon(Icons.keyboard_arrow_down,
-                          size: 18, color: Color(0xFF2F6BFF)),
+                          size: 18, color: Color(0xFF2563EB)),
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF15151A),
+                        color: Color(0xFF172554),
                       ),
                       items: _sortOptions.map((opt) {
                         return DropdownMenuItem<String>(
@@ -2344,7 +2380,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.inventory_2_outlined,
-                              size: 56, color: Colors.grey.shade400),
+                              size: 56, color: const Color(0xFF94A3B8)),
                           const SizedBox(height: 12),
                           Text(
                             _searchController.text.isNotEmpty ||
@@ -2352,9 +2388,9 @@ class _ProdukListPageState extends State<ProdukListPage> {
                                 ? 'Tidak ada produk yang sesuai dengan pencarian atau filter.'
                                 : 'Belum ada produk yang tersedia di katalog.',
                             textAlign: TextAlign.center,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 14,
-                              color: Colors.grey.shade700,
+                              color: Color(0xFF64748B),
                             ),
                           ),
                           if (_searchController.text.isNotEmpty ||
@@ -2362,6 +2398,10 @@ class _ProdukListPageState extends State<ProdukListPage> {
                               _selectedSort != 'Default') ...[
                             const SizedBox(height: 12),
                             OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF2563EB),
+                                side: const BorderSide(color: Color(0xFFBFDBFE)),
+                              ),
                               onPressed: () {
                                 _searchController.clear();
                                 setState(() {
@@ -2388,6 +2428,8 @@ class _ProdukListPageState extends State<ProdukListPage> {
                 }
 
                 return RefreshIndicator(
+                  color: const Color(0xFF2563EB),
+                  backgroundColor: Colors.white,
                   onRefresh: () async => _reload(),
                   child: ListView.builder(
                     padding: const EdgeInsets.only(top: 4, bottom: 20),
@@ -2399,13 +2441,13 @@ class _ProdukListPageState extends State<ProdukListPage> {
                         child: PressableScale(
                           child: Card(
                             color: Colors.white,
-                            elevation: 0.8,
+                            elevation: 0.5,
                             margin: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 6),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                               side: const BorderSide(
-                                  color: Color(0xFFE6E6EC), width: 0.8),
+                                  color: Color(0xFFE2E8F0), width: 0.8),
                             ),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(14),
@@ -2444,7 +2486,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
                                                   style: const TextStyle(
                                                     fontSize: 15,
                                                     fontWeight: FontWeight.bold,
-                                                    color: Color(0xFF15151A),
+                                                    color: Color(0xFF172554),
                                                   ),
                                                 ),
                                               ),
@@ -2457,7 +2499,8 @@ class _ProdukListPageState extends State<ProdukListPage> {
                                             produk.kategori,
                                             style: const TextStyle(
                                               fontSize: 12,
-                                              color: Color(0xFF8A8A93),
+                                              fontWeight: FontWeight.w500,
+                                              color: Color(0xFF64748B),
                                             ),
                                           ),
                                           if (produk.deskripsi != null &&
@@ -2467,9 +2510,9 @@ class _ProdukListPageState extends State<ProdukListPage> {
                                               produk.deskripsi!,
                                               maxLines: 2,
                                               overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
+                                              style: const TextStyle(
                                                 fontSize: 13,
-                                                color: Colors.grey.shade800,
+                                                color: Color(0xFF64748B),
                                               ),
                                             ),
                                           ],
@@ -2489,8 +2532,8 @@ class _ProdukListPageState extends State<ProdukListPage> {
                                                     style: const TextStyle(
                                                       fontSize: 16,
                                                       fontWeight:
-                                                          FontWeight.bold,
-                                                      color: Color(0xFF15151A),
+                                                          FontWeight.w800,
+                                                      color: Color(0xFF2563EB),
                                                     ),
                                                   ),
                                                   _buildGrosirPill(produk),
@@ -2755,13 +2798,13 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: Colors.grey.shade200,
+          color: const Color(0xFFF1F5F9),
           borderRadius: BorderRadius.circular(8),
         ),
         child: const Text(
           'Tidak Tersedia',
           style: TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey),
+              fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
         ),
       );
     }
@@ -2773,16 +2816,16 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFF3D6),
+          color: const Color(0xFFFFFBEB),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFE0A32E), width: 0.8),
+          border: Border.all(color: const Color(0xFFFDE68A), width: 0.8),
         ),
         child: Text(
           'Pre-Order$estimasi',
           style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF946200),
+            color: Color(0xFFD97706),
           ),
         ),
       );
@@ -2791,16 +2834,16 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFEBEB),
+          color: const Color(0xFFFEF2F2),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFE14B4B), width: 0.8),
+          border: Border.all(color: const Color(0xFFFECACA), width: 0.8),
         ),
         child: const Text(
           'Stok Habis',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: Color(0xFFB42323),
+            color: Color(0xFFDC2626),
           ),
         ),
       );
@@ -2808,7 +2851,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: const Color(0xFFEBF8EE),
+        color: const Color(0xFFECFDF5),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
@@ -2816,7 +2859,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
         style: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: Color(0xFF2E9E5B),
+          color: Color(0xFF059669),
         ),
       ),
     );
@@ -2828,25 +2871,25 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE6E6EC)),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: const Color(0xFF2F6BFF)),
+          Icon(icon, size: 20, color: const Color(0xFF2563EB)),
           const SizedBox(width: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 label,
-                style: const TextStyle(fontSize: 11, color: Color(0xFF8A8A93)),
+                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
               ),
               Text(
                 value,
                 style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF15151A)),
+                    color: Color(0xFF172554)),
               ),
             ],
           ),
@@ -2973,7 +3016,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF15151A),
+                                color: Color(0xFF172554),
                               ),
                             ),
                           ),
@@ -2991,7 +3034,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFFE6E6EC)),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2999,7 +3042,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                             const Text(
                               'Harga Satuan Normal',
                               style: TextStyle(
-                                  fontSize: 12, color: Color(0xFF8A8A93)),
+                                  fontSize: 12, color: Color(0xFF64748B)),
                             ),
                             const SizedBox(height: 2),
                             Text(
@@ -3007,7 +3050,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                               style: const TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF2F6BFF),
+                                color: Color(0xFF2563EB),
                               ),
                             ),
                             if (isGrosirActive) ...[
@@ -3016,7 +3059,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFEAF0FF),
+                                  color: const Color(0xFFEFF6FF),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
@@ -3024,7 +3067,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                                   style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF2F6BFF),
+                                    color: Color(0xFF2563EB),
                                   ),
                                 ),
                               ),
@@ -3081,7 +3124,9 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                       const Text(
                         'Deskripsi Produk',
                         style: TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.bold),
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF172554)),
                       ),
                       const SizedBox(height: 6),
                       Container(
@@ -3090,7 +3135,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE6E6EC)),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
                         ),
                         child: Text(
                           product.deskripsi != null &&
@@ -3099,7 +3144,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                               : 'Tidak ada deskripsi untuk produk ini.',
                           style: const TextStyle(
                             fontSize: 14,
-                            color: Color(0xFF15151A),
+                            color: Color(0xFF334155),
                             height: 1.4,
                           ),
                         ),
@@ -3111,7 +3156,9 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                         const Text(
                           'Tingkat Harga Grosir (Server)',
                           style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.bold),
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF172554)),
                         ),
                         const SizedBox(height: 6),
                         Container(
@@ -3119,7 +3166,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFE6E6EC)),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
                           ),
                           child: Column(
                             children: product.hargaGrosir.map((tier) {
@@ -3130,11 +3177,11 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                                     horizontal: 14, vertical: 10),
                                 decoration: BoxDecoration(
                                   color: tierReached
-                                      ? const Color(0xFFF0F5FF)
+                                      ? const Color(0xFFEFF6FF)
                                       : Colors.transparent,
-                                  border: Border(
+                                  border: const Border(
                                     bottom: BorderSide(
-                                        color: Colors.grey.shade200),
+                                        color: Color(0xFFF1F5F9)),
                                   ),
                                 ),
                                 child: Row(
@@ -3149,8 +3196,8 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                                               : Icons.radio_button_unchecked,
                                           size: 16,
                                           color: tierReached
-                                              ? const Color(0xFF2F6BFF)
-                                              : Colors.grey,
+                                              ? const Color(0xFF2563EB)
+                                              : const Color(0xFF94A3B8),
                                         ),
                                         const SizedBox(width: 8),
                                         Text(
@@ -3160,7 +3207,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                                             fontWeight: tierReached
                                                 ? FontWeight.bold
                                                 : FontWeight.normal,
-                                            color: const Color(0xFF15151A),
+                                            color: const Color(0xFF172554),
                                           ),
                                         ),
                                       ],
@@ -3171,8 +3218,8 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                                         fontSize: 13,
                                         fontWeight: FontWeight.bold,
                                         color: tierReached
-                                            ? const Color(0xFF2F6BFF)
-                                            : const Color(0xFF15151A),
+                                            ? const Color(0xFF2563EB)
+                                            : const Color(0xFF172554),
                                       ),
                                     ),
                                   ],
@@ -3194,7 +3241,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                   color: Colors.white,
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0x0D000000),
+                      color: const Color(0xFF172554).withValues(alpha: 0.06),
                       blurRadius: 10,
                       offset: const Offset(0, -3),
                     ),
@@ -3212,10 +3259,10 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                           // Quantity Stepper
                           Container(
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF5F5F7),
+                              color: const Color(0xFFF1F5F9),
                               borderRadius: BorderRadius.circular(10),
                               border:
-                                  Border.all(color: const Color(0xFFE6E6EC)),
+                                  Border.all(color: const Color(0xFFE2E8F0)),
                             ),
                             child: Row(
                               children: [
@@ -3238,6 +3285,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                                     style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.bold,
+                                      color: Color(0xFF172554),
                                     ),
                                   ),
                                 ),
@@ -3262,14 +3310,14 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                               const Text(
                                 'Estimasi Subtotal',
                                 style: TextStyle(
-                                    fontSize: 11, color: Color(0xFF8A8A93)),
+                                    fontSize: 11, color: Color(0xFF64748B)),
                               ),
                               Text(
                                 _formatRupiah(subtotal),
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF15151A),
+                                  color: Color(0xFF2563EB),
                                 ),
                               ),
                             ],
@@ -3291,12 +3339,12 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                                 child: OutlinedButton.icon(
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: !canOrder
-                                        ? Colors.grey.shade400
-                                        : const Color(0xFF0D0D12),
+                                        ? const Color(0xFF94A3B8)
+                                        : const Color(0xFF172554),
                                     side: BorderSide(
                                       color: !canOrder
-                                          ? Colors.grey.shade300
-                                          : const Color(0xFF0D0D12),
+                                          ? const Color(0xFFCBD5E1)
+                                          : const Color(0xFF172554),
                                       width: 1.5,
                                     ),
                                     shape: RoundedRectangleBorder(
@@ -3335,8 +3383,8 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                                 child: ElevatedButton.icon(
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: !canOrder
-                                        ? Colors.grey.shade400
-                                        : (product.preOrder ? const Color(0xFFE0A32E) : const Color(0xFF2F6BFF)),
+                                        ? const Color(0xFF94A3B8)
+                                        : (product.preOrder ? const Color(0xFFD97706) : const Color(0xFF2563EB)),
                                     foregroundColor: Colors.white,
                                     elevation: 0,
                                     shape: RoundedRectangleBorder(
@@ -3585,7 +3633,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2F6BFF),
+                        backgroundColor: const Color(0xFF2563EB),
                         foregroundColor: Colors.white,
                       ),
                       icon: const Icon(Icons.refresh),
@@ -3609,27 +3657,27 @@ class _KeranjangPageState extends State<KeranjangPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.shopping_cart_outlined,
-                        size: 64, color: Colors.grey.shade400),
+                        size: 64, color: const Color(0xFF94A3B8)),
                     const SizedBox(height: 12),
                     const Text(
                       'Keranjang belanja Anda masih kosong.',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF15151A),
+                        color: Color(0xFF172554),
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
+                    const Text(
                       'Pilih perlengkapan kantor atau alat tulis impian Anda sekarang.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                          fontSize: 13, color: Colors.grey.shade600),
+                          fontSize: 13, color: Color(0xFF64748B)),
                     ),
                     const SizedBox(height: 18),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2F6BFF),
+                        backgroundColor: const Color(0xFF2563EB),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 20, vertical: 12),
@@ -3666,11 +3714,11 @@ class _KeranjangPageState extends State<KeranjangPage> {
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: Colors.white,
                   border: Border(
                     bottom: BorderSide(
-                      color: const Color(0xFFE6E6EC),
+                      color: Color(0xFFE2E8F0),
                       width: 0.8,
                     ),
                   ),
@@ -3679,6 +3727,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
                   children: [
                     Checkbox(
                       value: isAllSelected,
+                      activeColor: const Color(0xFF2563EB),
                       tristate: _selectedItemIds!.isNotEmpty && !isAllSelected,
                       onChanged: _isProcessing
                           ? null
@@ -3697,7 +3746,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF15151A),
+                        color: Color(0xFF172554),
                       ),
                     ),
                   ],
@@ -3716,13 +3765,13 @@ class _KeranjangPageState extends State<KeranjangPage> {
 
                     return Card(
                       color: Colors.white,
-                      elevation: 0.8,
+                      elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                         side: BorderSide(
                           color: isChecked
-                              ? const Color(0xFF2F6BFF).withValues(alpha: 0.5)
-                              : const Color(0xFFE6E6EC),
+                              ? const Color(0xFF2563EB).withValues(alpha: 0.6)
+                              : const Color(0xFFE2E8F0),
                           width: isChecked ? 1.2 : 0.8,
                         ),
                       ),
@@ -3736,6 +3785,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
                               children: [
                                 Checkbox(
                                   value: isChecked,
+                                  activeColor: const Color(0xFF2563EB),
                                   onChanged: _isProcessing
                                       ? null
                                       : (val) {
@@ -3759,15 +3809,15 @@ class _KeranjangPageState extends State<KeranjangPage> {
                                         style: const TextStyle(
                                           fontSize: 15,
                                           fontWeight: FontWeight.bold,
-                                          color: Color(0xFF15151A),
+                                          color: Color(0xFF172554),
                                         ),
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
                                         'Harga satuan: ${_formatRupiah(item.hargaSatuan)}',
-                                        style: TextStyle(
+                                        style: const TextStyle(
                                           fontSize: 12,
-                                          color: Colors.grey.shade600,
+                                          color: Color(0xFF64748B),
                                         ),
                                       ),
                                     ],
@@ -3775,7 +3825,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
                                 ),
                                 IconButton(
                                   icon: const Icon(Icons.delete_outline,
-                                      size: 20, color: Color(0xFFE14B4B)),
+                                      size: 20, color: Color(0xFFDC2626)),
                                   tooltip: 'Hapus item',
                                   onPressed: _isProcessing
                                       ? null
@@ -3783,7 +3833,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
                                 ),
                               ],
                             ),
-                            const Divider(height: 16),
+                            const Divider(height: 16, color: Color(0xFFF1F5F9)),
                             Row(
                               mainAxisAlignment:
                                   MainAxisAlignment.spaceBetween,
@@ -3791,10 +3841,10 @@ class _KeranjangPageState extends State<KeranjangPage> {
                                 // Stepper Kuantitas
                                 Container(
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFF5F5F7),
+                                    color: const Color(0xFFF1F5F9),
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                        color: const Color(0xFFE6E6EC)),
+                                        color: const Color(0xFFE2E8F0)),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
@@ -3806,8 +3856,8 @@ class _KeranjangPageState extends State<KeranjangPage> {
                                               : Icons.remove,
                                           size: 16,
                                           color: item.jumlah <= 1
-                                              ? const Color(0xFFE14B4B)
-                                              : Colors.black87,
+                                              ? const Color(0xFFDC2626)
+                                              : const Color(0xFF172554),
                                         ),
                                         padding: EdgeInsets.zero,
                                         constraints: const BoxConstraints(
@@ -3826,12 +3876,14 @@ class _KeranjangPageState extends State<KeranjangPage> {
                                           style: const TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.bold,
+                                            color: Color(0xFF172554),
                                           ),
                                         ),
                                       ),
                                       IconButton(
                                         icon: const Icon(Icons.add,
-                                            size: 16),
+                                            size: 16,
+                                            color: Color(0xFF172554)),
                                         padding: EdgeInsets.zero,
                                         constraints: const BoxConstraints(
                                             minWidth: 32, minHeight: 32),
@@ -3848,18 +3900,18 @@ class _KeranjangPageState extends State<KeranjangPage> {
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
-                                    Text(
+                                    const Text(
                                       'Subtotal',
                                       style: TextStyle(
                                           fontSize: 11,
-                                          color: Colors.grey.shade600),
+                                          color: Color(0xFF64748B)),
                                     ),
                                     Text(
                                       _formatRupiah(item.subtotal),
                                       style: const TextStyle(
                                         fontSize: 15,
                                         fontWeight: FontWeight.bold,
-                                        color: Color(0xFF15151A),
+                                        color: Color(0xFF172554),
                                       ),
                                     ),
                                   ],
@@ -3877,13 +3929,13 @@ class _KeranjangPageState extends State<KeranjangPage> {
               // 3. Bagian Bawah: Subtotal Terpilih & Lanjut ke Checkout
               Container(
                 padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: Colors.white,
                   boxShadow: [
                     BoxShadow(
-                      color: Color(0x0D000000),
+                      color: const Color(0xFF172554).withValues(alpha: 0.06),
                       blurRadius: 10,
-                      offset: Offset(0, -3),
+                      offset: const Offset(0, -3),
                     ),
                   ],
                 ),
@@ -3902,7 +3954,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
                                 'Subtotal (${selectedItems.length} terpilih)',
                                 style: const TextStyle(
                                   fontSize: 12,
-                                  color: Color(0xFF8A8A93),
+                                  color: Color(0xFF64748B),
                                 ),
                               ),
                               Text(
@@ -3910,7 +3962,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
                                 style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF2F6BFF),
+                                  color: Color(0xFF2563EB),
                                 ),
                               ),
                             ],
@@ -3918,8 +3970,8 @@ class _KeranjangPageState extends State<KeranjangPage> {
                           ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: canCheckout
-                                  ? const Color(0xFF0D0D12)
-                                  : Colors.grey.shade400,
+                                  ? const Color(0xFF2563EB)
+                                  : const Color(0xFF94A3B8),
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 18, vertical: 14),
@@ -4306,7 +4358,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF15151A),
+                            color: Color(0xFF172554),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -4316,7 +4368,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                                color: const Color(0xFFE6E6EC), width: 0.8),
+                                color: const Color(0xFFE2E8F0), width: 0.8),
                           ),
                           child: Column(
                             children: [
@@ -4400,7 +4452,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF15151A),
+                            color: Color(0xFF172554),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -4410,7 +4462,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                                color: const Color(0xFFE6E6EC), width: 0.8),
+                                color: const Color(0xFFE2E8F0), width: 0.8),
                           ),
                           child: Column(
                             children: [
@@ -4495,7 +4547,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF15151A),
+                            color: Color(0xFF172554),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -4504,7 +4556,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                                color: const Color(0xFFE6E6EC), width: 0.8),
+                                color: const Color(0xFFE2E8F0), width: 0.8),
                           ),
                           child: Column(
                             children: [
@@ -4524,8 +4576,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                             ? Icons.radio_button_checked
                                             : Icons.radio_button_unchecked,
                                         color: _metodePembayaran == 'tunai_di_tempat'
-                                            ? const Color(0xFF2F6BFF)
-                                            : Colors.grey,
+                                            ? const Color(0xFF2563EB)
+                                            : const Color(0xFF94A3B8),
                                       ),
                                       const SizedBox(width: 12),
                                       const Expanded(
@@ -4536,14 +4588,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                               'Tunai di Tempat (COD)',
                                               style: TextStyle(
                                                   fontSize: 14,
-                                                  fontWeight: FontWeight.w600),
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Color(0xFF172554)),
                                             ),
                                             SizedBox(height: 2),
                                             Text(
                                               'Bayar langsung secara tunai saat barang diantarkan kurir',
                                               style: TextStyle(
                                                   fontSize: 12,
-                                                  color: Color(0xFF8A8A93)),
+                                                  color: Color(0xFF64748B)),
                                             ),
                                           ],
                                         ),
@@ -4552,7 +4605,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                   ),
                                 ),
                               ),
-                              const Divider(height: 1),
+                              const Divider(height: 1, color: Color(0xFFF1F5F9)),
                               InkWell(
                                 onTap: () {
                                   setState(() {
@@ -4569,8 +4622,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                             ? Icons.radio_button_checked
                                             : Icons.radio_button_unchecked,
                                         color: _metodePembayaran == 'transfer_manual'
-                                            ? const Color(0xFF2F6BFF)
-                                            : Colors.grey,
+                                            ? const Color(0xFF2563EB)
+                                            : const Color(0xFF94A3B8),
                                       ),
                                       const SizedBox(width: 12),
                                       const Expanded(
@@ -4581,14 +4634,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                               'Transfer Bank Manual',
                                               style: TextStyle(
                                                   fontSize: 14,
-                                                  fontWeight: FontWeight.w600),
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Color(0xFF172554)),
                                             ),
                                             SizedBox(height: 2),
                                             Text(
                                               'Transfer ke rekening toko dan konfirmasi pembayaran',
                                               style: TextStyle(
                                                   fontSize: 12,
-                                                  color: Color(0xFF8A8A93)),
+                                                  color: Color(0xFF64748B)),
                                             ),
                                           ],
                                         ),
@@ -4609,7 +4663,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF15151A),
+                            color: Color(0xFF172554),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -4619,7 +4673,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                                color: const Color(0xFFE6E6EC), width: 0.8),
+                                color: const Color(0xFFE2E8F0), width: 0.8),
                           ),
                           child: _isLoadingSummary
                               ? const Center(
@@ -4676,7 +4730,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                             const Text('Subtotal Produk',
                                                 style: TextStyle(
                                                     fontSize: 13,
-                                                    color: Color(0xFF8A8A93))),
+                                                    color: Color(0xFF64748B))),
                                             Text(
                                               _formatRupiah(
                                                   _ringkasanKeranjang?.subtotal ??
@@ -4684,7 +4738,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                               style: const TextStyle(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.w600,
-                                                color: Color(0xFF15151A),
+                                                color: Color(0xFF172554),
                                               ),
                                             ),
                                           ],
@@ -4697,7 +4751,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                             const Text('Ongkos Kirim',
                                                 style: TextStyle(
                                                     fontSize: 13,
-                                                    color: Color(0xFF8A8A93))),
+                                                    color: Color(0xFF64748B))),
                                             Text(
                                               _ringkasanKeranjang?.ongkosKirim !=
                                                       null
@@ -4715,13 +4769,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                                 color: _ringkasanKeranjang
                                                             ?.ongkosKirim !=
                                                         null
-                                                    ? const Color(0xFF15151A)
-                                                    : Colors.grey.shade600,
+                                                    ? const Color(0xFF172554)
+                                                    : const Color(0xFF64748B),
                                               ),
                                             ),
                                           ],
                                         ),
-                                        const Divider(height: 20),
+                                        const Divider(height: 20, color: Color(0xFFF1F5F9)),
                                         Row(
                                           mainAxisAlignment:
                                               MainAxisAlignment.spaceBetween,
@@ -4731,7 +4785,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                               style: TextStyle(
                                                 fontSize: 15,
                                                 fontWeight: FontWeight.bold,
-                                                color: Color(0xFF15151A),
+                                                color: Color(0xFF172554),
                                               ),
                                             ),
                                             Text(
@@ -4744,7 +4798,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                               style: const TextStyle(
                                                 fontSize: 18,
                                                 fontWeight: FontWeight.bold,
-                                                color: Color(0xFF2F6BFF),
+                                                color: Color(0xFF2563EB),
                                               ),
                                             ),
                                           ],
@@ -4760,13 +4814,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 // Tombol Buat Pesanan
                 Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: Colors.white,
                     boxShadow: [
                       BoxShadow(
-                        color: Color(0x0D000000),
+                        color: const Color(0xFF172554).withValues(alpha: 0.06),
                         blurRadius: 10,
-                        offset: Offset(0, -3),
+                        offset: const Offset(0, -3),
                       ),
                     ],
                   ),
@@ -4777,7 +4831,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       height: 48,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0D0D12),
+                          backgroundColor: const Color(0xFF2563EB),
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -4844,12 +4898,12 @@ class KonfirmasiPesananPage extends StatelessWidget {
                 width: 76,
                 height: 76,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFEBF8EE),
+                  color: Color(0xFFECFDF5),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.check_circle,
-                  color: Color(0xFF2E9E5B),
+                  color: Color(0xFF059669),
                   size: 48,
                 ),
               ),
@@ -4859,16 +4913,16 @@ class KonfirmasiPesananPage extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF15151A),
+                  color: Color(0xFF172554),
                 ),
               ),
               const SizedBox(height: 6),
-              Text(
+              const Text(
                 'Pesanan Anda telah berhasil dibuat dan diteruskan ke pihak toko.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey.shade700,
+                  color: Color(0xFF64748B),
                 ),
               ),
               const SizedBox(height: 24),
@@ -4881,7 +4935,7 @@ class KonfirmasiPesananPage extends StatelessWidget {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border:
-                      Border.all(color: const Color(0xFFE6E6EC), width: 0.8),
+                      Border.all(color: const Color(0xFFE2E8F0), width: 0.8),
                 ),
                 child: Column(
                   children: [
@@ -4898,7 +4952,7 @@ class KonfirmasiPesananPage extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF2F6BFF),
+                            color: Color(0xFF2563EB),
                           ),
                         ),
                       ],
@@ -4910,42 +4964,43 @@ class KonfirmasiPesananPage extends StatelessWidget {
                         const Text(
                           'Status Pesanan',
                           style: TextStyle(
-                              fontSize: 13, color: Color(0xFF8A8A93)),
+                              fontSize: 13, color: Color(0xFF64748B)),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFF3D6),
+                            color: const Color(0xFFFEF3C7),
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(
-                                color: const Color(0xFFE0A32E), width: 0.8),
+                                color: const Color(0xFFFDE68A), width: 0.8),
                           ),
                           child: Text(
                             order.status.replaceAll('_', ' ').toUpperCase(),
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF946200),
+                              color: Color(0xFFD97706),
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const Divider(height: 24),
+                    const Divider(height: 24, color: Color(0xFFF1F5F9)),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
                           'Subtotal Produk',
                           style: TextStyle(
-                              fontSize: 13, color: Color(0xFF8A8A93)),
+                              fontSize: 13, color: Color(0xFF64748B)),
                         ),
                         Text(
                           _formatRupiah(order.subtotal),
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
+                            color: Color(0xFF172554),
                           ),
                         ),
                       ],
@@ -4957,18 +5012,19 @@ class KonfirmasiPesananPage extends StatelessWidget {
                         const Text(
                           'Ongkos Kirim',
                           style: TextStyle(
-                              fontSize: 13, color: Color(0xFF8A8A93)),
+                              fontSize: 13, color: Color(0xFF64748B)),
                         ),
                         Text(
                           _formatRupiah(order.ongkosKirim),
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
+                            color: Color(0xFF172554),
                           ),
                         ),
                       ],
                     ),
-                    const Divider(height: 24),
+                    const Divider(height: 24, color: Color(0xFFF1F5F9)),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -4977,7 +5033,7 @@ class KonfirmasiPesananPage extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF15151A),
+                            color: Color(0xFF172554),
                           ),
                         ),
                         Text(
@@ -4985,7 +5041,7 @@ class KonfirmasiPesananPage extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF2F6BFF),
+                            color: Color(0xFF2563EB),
                           ),
                         ),
                       ],
@@ -5001,7 +5057,7 @@ class KonfirmasiPesananPage extends StatelessWidget {
                 height: 48,
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D0D12),
+                    backgroundColor: const Color(0xFF2563EB),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -5034,8 +5090,8 @@ class KonfirmasiPesananPage extends StatelessWidget {
                 height: 48,
                 child: OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF2F6BFF),
-                    side: const BorderSide(color: Color(0xFF2F6BFF)),
+                    foregroundColor: const Color(0xFF172554),
+                    side: const BorderSide(color: Color(0xFF172554)),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -5063,6 +5119,9 @@ class KonfirmasiPesananPage extends StatelessWidget {
                 width: double.infinity,
                 height: 48,
                 child: TextButton.icon(
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF64748B),
+                  ),
                   icon: const Icon(Icons.storefront_outlined),
                   label: const Text(
                     'Kembali ke Katalog Produk',
@@ -5096,57 +5155,57 @@ Widget _buildOrderStatusBadge(String status) {
 
   switch (status.toLowerCase()) {
     case 'menunggu_stok':
-      bg = const Color(0xFFFFF3D6);
-      border = const Color(0xFFE0A32E);
-      text = const Color(0xFF946200);
+      bg = const Color(0xFFFEF3C7);
+      border = const Color(0xFFFDE68A);
+      text = const Color(0xFFD97706);
       label = 'MENUNGGU STOK';
       break;
     case 'menunggu_pembayaran':
-      bg = const Color(0xFFFFF7E6);
-      border = const Color(0xFFFA8C16);
-      text = const Color(0xFFD46B08);
+      bg = const Color(0xFFFFFBEB);
+      border = const Color(0xFFFCD34D);
+      text = const Color(0xFFB45309);
       label = 'MENUNGGU PEMBAYARAN';
       break;
     case 'menunggu_konfirmasi':
-      bg = const Color(0xFFFFF3D6);
-      border = const Color(0xFFE0A32E);
-      text = const Color(0xFF946200);
+      bg = const Color(0xFFFEF3C7);
+      border = const Color(0xFFFDE68A);
+      text = const Color(0xFFD97706);
       label = 'MENUNGGU KONFIRMASI';
       break;
     case 'dibayar':
-      bg = const Color(0xFFE6F7FF);
-      border = const Color(0xFF1890FF);
-      text = const Color(0xFF096DD9);
+      bg = const Color(0xFFEFF6FF);
+      border = const Color(0xFFBFDBFE);
+      text = const Color(0xFF1D4ED8);
       label = 'DIBAYAR';
       break;
     case 'diproses':
-      bg = const Color(0xFFEAF0FF);
-      border = const Color(0xFF2F6BFF);
-      text = const Color(0xFF2F6BFF);
+      bg = const Color(0xFFEFF6FF);
+      border = const Color(0xFF93C5FD);
+      text = const Color(0xFF2563EB);
       label = 'DIPROSES';
       break;
     case 'dikirim':
-      bg = const Color(0xFFF2E7FE);
-      border = const Color(0xFF9C27B0);
-      text = const Color(0xFF7B1FA2);
+      bg = const Color(0xFFFAF5FF);
+      border = const Color(0xFFE9D5FF);
+      text = const Color(0xFF7E22CE);
       label = 'DIKIRIM';
       break;
     case 'selesai':
-      bg = const Color(0xFFEBF8EE);
-      border = const Color(0xFF2E9E5B);
-      text = const Color(0xFF2E9E5B);
+      bg = const Color(0xFFECFDF5);
+      border = const Color(0xFFA7F3D0);
+      text = const Color(0xFF059669);
       label = 'SELESAI';
       break;
     case 'dibatalkan':
-      bg = const Color(0xFFFFEBEB);
-      border = const Color(0xFFE14B4B);
-      text = const Color(0xFFB42323);
+      bg = const Color(0xFFFEF2F2);
+      border = const Color(0xFFFECACA);
+      text = const Color(0xFFDC2626);
       label = 'DIBATALKAN';
       break;
     default:
-      bg = Colors.grey.shade100;
-      border = Colors.grey.shade400;
-      text = Colors.grey.shade800;
+      bg = const Color(0xFFF1F5F9);
+      border = const Color(0xFFE2E8F0);
+      text = const Color(0xFF64748B);
   }
 
   return Container(
@@ -5314,28 +5373,32 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.local_shipping_outlined,
-                        size: 64, color: Colors.grey.shade400),
+                        size: 64, color: const Color(0xFF94A3B8)),
                     const SizedBox(height: 12),
                     const Text(
                       'Tidak Ada Pesanan Aktif',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF15151A),
+                        color: Color(0xFF172554),
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
+                    const Text(
                       'Seluruh pesanan Anda telah selesai atau Anda belum membuat pesanan baru.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                          fontSize: 13, color: Colors.grey.shade600),
+                          fontSize: 13, color: Color(0xFF64748B)),
                     ),
                     const SizedBox(height: 18),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF172554),
+                            side: const BorderSide(color: Color(0xFFCBD5E1)),
+                          ),
                           icon: const Icon(Icons.history_rounded),
                           label: const Text('Riwayat Selesai'),
                           onPressed: () {
@@ -5349,7 +5412,7 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                         const SizedBox(width: 10),
                         ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2F6BFF),
+                            backgroundColor: const Color(0xFF2563EB),
                             foregroundColor: Colors.white,
                           ),
                           icon: const Icon(Icons.storefront_outlined),
@@ -5418,15 +5481,15 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                   ),
                 ),
               ),
-              const Divider(height: 1, color: Color(0xFFE6E6EC)),
+              const Divider(height: 1, color: Color(0xFFE2E8F0)),
 
               Expanded(
                 child: filteredOrders.isEmpty
-                    ? Center(
+                    ? const Center(
                         child: Text(
-                          'Tidak ada pesanan aktif dengan status "$_filterStatus".',
+                          'Tidak ada pesanan aktif.',
                           style: TextStyle(
-                              color: Colors.grey.shade600, fontSize: 13),
+                              color: Color(0xFF64748B), fontSize: 13),
                         ),
                       )
                     : ListView.separated(
@@ -5440,11 +5503,11 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
 
                           return Card(
                             color: Colors.white,
-                            elevation: 0.8,
+                            elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                               side: const BorderSide(
-                                  color: Color(0xFFE6E6EC), width: 0.8),
+                                  color: Color(0xFFE2E8F0), width: 0.8),
                             ),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(14),
@@ -5481,16 +5544,16 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                                                 style: const TextStyle(
                                                   fontSize: 15,
                                                   fontWeight: FontWeight.bold,
-                                                  color: Color(0xFF15151A),
+                                                  color: Color(0xFF172554),
                                                 ),
                                               ),
                                               if (order.createdAt != null) ...[
                                                 const SizedBox(height: 2),
                                                 Text(
                                                   order.createdAt!,
-                                                  style: TextStyle(
+                                                  style: const TextStyle(
                                                     fontSize: 12,
-                                                    color: Colors.grey.shade600,
+                                                    color: Color(0xFF64748B),
                                                   ),
                                                 ),
                                               ],
@@ -5509,23 +5572,23 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 10, vertical: 6),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFF9FAFB),
+                                        color: const Color(0xFFF8FAFC),
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
-                                            color: const Color(0xFFE5E7EB)),
+                                            color: const Color(0xFFE2E8F0)),
                                       ),
                                       child: Row(
                                         children: [
                                           const Icon(Icons.info_outline,
                                               size: 14,
-                                              color: Color(0xFF6B7280)),
+                                              color: Color(0xFF2563EB)),
                                           const SizedBox(width: 6),
                                           Expanded(
                                             child: Text(
                                               hint,
                                               style: const TextStyle(
                                                 fontSize: 11.5,
-                                                color: Color(0xFF4B5563),
+                                                color: Color(0xFF475569),
                                               ),
                                             ),
                                           ),
@@ -5534,7 +5597,7 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                                     ),
 
                                     const SizedBox(height: 10),
-                                    const Divider(height: 1),
+                                    const Divider(height: 1, color: Color(0xFFF1F5F9)),
                                     const SizedBox(height: 10),
 
                                     // Baris 2: Rincian Singkat (Jumlah Item, Kurir, Total)
@@ -5549,17 +5612,17 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                                             if (order.jumlahItem != null)
                                               Text(
                                                 '${order.jumlahItem} Produk dipesan',
-                                                style: TextStyle(
+                                                style: const TextStyle(
                                                   fontSize: 12,
-                                                  color: Colors.grey.shade700,
+                                                  color: Color(0xFF64748B),
                                                 ),
                                               ),
                                             if (order.kurir != null)
                                               Text(
                                                 'Kurir: ${order.kurir}',
-                                                style: TextStyle(
+                                                style: const TextStyle(
                                                   fontSize: 11,
-                                                  color: Colors.grey.shade500,
+                                                  color: Color(0xFF94A3B8),
                                                 ),
                                               ),
                                           ],
@@ -5572,7 +5635,7 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                                               'Total Tagihan',
                                               style: TextStyle(
                                                 fontSize: 11,
-                                                color: Color(0xFF8A8A93),
+                                                color: Color(0xFF64748B),
                                               ),
                                             ),
                                             Text(
@@ -5580,7 +5643,7 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                                               style: const TextStyle(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.bold,
-                                                color: Color(0xFF2F6BFF),
+                                                color: Color(0xFF2563EB),
                                               ),
                                             ),
                                           ],
@@ -5596,9 +5659,9 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                                       child: OutlinedButton.icon(
                                         style: OutlinedButton.styleFrom(
                                           foregroundColor:
-                                              const Color(0xFF2F6BFF),
+                                              const Color(0xFF2563EB),
                                           side: const BorderSide(
-                                              color: Color(0xFF2F6BFF),
+                                              color: Color(0xFFBFDBFE),
                                               width: 1),
                                           shape: RoundedRectangleBorder(
                                             borderRadius:
@@ -5652,10 +5715,14 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
       child: ChoiceChip(
         label: Text('$label ($count)'),
         selected: isSelected,
-        selectedColor: const Color(0xFF2F6BFF),
-        backgroundColor: const Color(0xFFEDEDF2),
+        selectedColor: const Color(0xFF2563EB),
+        backgroundColor: const Color(0xFFF1F5F9),
+        side: BorderSide(
+          color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
+          width: 0.8,
+        ),
         labelStyle: TextStyle(
-          color: isSelected ? Colors.white : const Color(0xFF15151A),
+          color: isSelected ? Colors.white : const Color(0xFF64748B),
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           fontSize: 11.5,
         ),
@@ -5761,7 +5828,7 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2F6BFF),
+                        backgroundColor: const Color(0xFF2563EB),
                         foregroundColor: Colors.white,
                       ),
                       icon: const Icon(Icons.refresh),
@@ -5787,22 +5854,22 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.check_circle_outline,
-                        size: 64, color: Colors.grey.shade400),
+                        size: 64, color: const Color(0xFF94A3B8)),
                     const SizedBox(height: 12),
                     const Text(
                       'Belum Ada Pesanan Selesai',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF15151A),
+                        color: Color(0xFF172554),
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
+                    const Text(
                       'Pesanan yang telah berhasil diterima dan diselesaikan akan tercatat di sini.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                          fontSize: 13, color: Colors.grey.shade600),
+                          fontSize: 13, color: Color(0xFF64748B)),
                     ),
                     const SizedBox(height: 18),
                     Row(
@@ -5810,7 +5877,7 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                       children: [
                         ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2F6BFF),
+                            backgroundColor: const Color(0xFF2563EB),
                             foregroundColor: Colors.white,
                           ),
                           icon: const Icon(Icons.local_shipping_outlined),
@@ -5839,11 +5906,11 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
               final order = orders[index];
               return Card(
                 color: Colors.white,
-                elevation: 0.8,
+                elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                   side: const BorderSide(
-                      color: Color(0xFFE6E6EC), width: 0.8),
+                      color: Color(0xFFE2E8F0), width: 0.8),
                 ),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(14),
@@ -5879,16 +5946,16 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                                     style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.bold,
-                                      color: Color(0xFF15151A),
+                                      color: Color(0xFF172554),
                                     ),
                                   ),
                                   if (order.createdAt != null) ...[
                                     const SizedBox(height: 2),
                                     Text(
                                       order.createdAt!,
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontSize: 12,
-                                        color: Colors.grey.shade600,
+                                        color: Color(0xFF64748B),
                                       ),
                                     ),
                                   ],
@@ -5901,7 +5968,7 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                         ),
 
                         const SizedBox(height: 12),
-                        const Divider(height: 1),
+                        const Divider(height: 1, color: Color(0xFFF1F5F9)),
                         const SizedBox(height: 12),
 
                         // Baris 2: Rincian Singkat (Jumlah Item, Kurir, Total)
@@ -5916,17 +5983,17 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                                 if (order.jumlahItem != null)
                                   Text(
                                     '${order.jumlahItem} Produk dibeli',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 12,
-                                      color: Colors.grey.shade700,
+                                      color: Color(0xFF64748B),
                                     ),
                                   ),
                                 if (order.kurir != null)
                                   Text(
                                     'Kurir: ${order.kurir}',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 11,
-                                      color: Colors.grey.shade500,
+                                      color: Color(0xFF94A3B8),
                                     ),
                                   ),
                               ],
@@ -5938,7 +6005,7 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                                   'Total Tagihan',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: Color(0xFF8A8A93),
+                                    color: Color(0xFF64748B),
                                   ),
                                 ),
                                 Text(
@@ -5946,7 +6013,7 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF2F6BFF),
+                                    color: Color(0xFF2563EB),
                                   ),
                                 ),
                               ],
@@ -5961,20 +6028,20 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                           alignment: Alignment.centerRight,
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
-                            children: [
+                            children: const [
                               Text(
                                 'Lihat Rincian',
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.grey.shade700,
+                                  color: Color(0xFF2563EB),
                                 ),
                               ),
-                              const SizedBox(width: 4),
+                              SizedBox(width: 4),
                               Icon(
                                 Icons.chevron_right,
                                 size: 16,
-                                color: Colors.grey.shade700,
+                                color: Color(0xFF2563EB),
                               ),
                             ],
                           ),
@@ -6415,21 +6482,21 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE6E6EC), width: 0.8),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 0.8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 18, color: const Color(0xFF2F6BFF)),
+              Icon(icon, size: 18, color: const Color(0xFF2563EB)),
               const SizedBox(width: 8),
               Text(
                 title,
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF15151A),
+                  color: Color(0xFF172554),
                 ),
               ),
             ],
@@ -6516,7 +6583,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                        color: const Color(0xFFE6E6EC), width: 0.8),
+                        color: const Color(0xFFE2E8F0), width: 0.8),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -6529,7 +6596,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                             'Status Pesanan',
                             style: TextStyle(
                               fontSize: 13,
-                              color: Color(0xFF8A8A93),
+                              color: Color(0xFF64748B),
                             ),
                           ),
                           _buildOrderStatusBadge(order.status),
@@ -6544,7 +6611,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                             'Nomor Pesanan',
                             style: TextStyle(
                               fontSize: 13,
-                              color: Color(0xFF8A8A93),
+                              color: Color(0xFF64748B),
                             ),
                           ),
                           SelectableText(
@@ -6552,7 +6619,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF2F6BFF),
+                              color: Color(0xFF2563EB),
                             ),
                           ),
                         ],
@@ -6906,7 +6973,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                           ),
                         ],
                       ),
-                      const Divider(height: 20),
+                      const Divider(height: 20, color: Color(0xFFF1F5F9)),
                       Row(
                         mainAxisAlignment:
                             MainAxisAlignment.spaceBetween,
@@ -6916,7 +6983,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF15151A),
+                              color: Color(0xFF172554),
                             ),
                           ),
                           Text(
@@ -6924,7 +6991,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF2F6BFF),
+                              color: Color(0xFF2563EB),
                             ),
                           ),
                         ],
@@ -7075,7 +7142,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                     color: Colors.white,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.06),
+                        color: const Color(0xFF172554).withValues(alpha: 0.06),
                         blurRadius: 10,
                         offset: const Offset(0, -3),
                       ),

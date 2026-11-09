@@ -415,7 +415,7 @@ class _SkeletonShimmerState extends State<SkeletonShimmer>
         width: widget.width,
         height: widget.height,
         decoration: BoxDecoration(
-          color: const Color(0xFFE8E8EE),
+          color: const Color(0xFFE2E8F0),
           borderRadius: widget.borderRadius ?? BorderRadius.circular(8),
         ),
       );
@@ -439,9 +439,9 @@ class _SkeletonShimmerState extends State<SkeletonShimmer>
                 (val + 0.35).clamp(0.0, 1.0),
               ],
               colors: const [
-                Color(0xFFEEEEF3),
-                Color(0xFFF9F9FC),
-                Color(0xFFEEEEF3),
+                Color(0xFFF1F5F9),
+                Color(0xFFFFFFFF),
+                Color(0xFFF1F5F9),
               ],
             ),
           ),
@@ -468,7 +468,7 @@ class ProductListSkeleton extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
-            side: const BorderSide(color: Color(0xFFE6E6EC), width: 0.8),
+            side: const BorderSide(color: Color(0xFFE2E8F0), width: 0.8),
           ),
           child: Padding(
             padding: const EdgeInsets.all(14),
