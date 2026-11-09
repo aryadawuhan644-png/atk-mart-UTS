@@ -1,13 +1,18 @@
+
 // lib/api/models/product.dart
-// Matches ProdukController::formatProduk() response exactly.
+// Matches ProdukController::formatProduk() response.
 
 class HargaGrosirTier {
   final int minKuantitas;
   final int hargaSatuan;
 
-  const HargaGrosirTier({required this.minKuantitas, required this.hargaSatuan});
+  const HargaGrosirTier({
+    required this.minKuantitas,
+    required this.hargaSatuan,
+  });
 
-  factory HargaGrosirTier.fromJson(Map<String, dynamic> json) => HargaGrosirTier(
+  factory HargaGrosirTier.fromJson(Map<String, dynamic> json) =>
+      HargaGrosirTier(
         minKuantitas: json['min_kuantitas'] as int,
         hargaSatuan: json['harga_satuan'] as int,
       );
@@ -28,6 +33,7 @@ class Product {
   final String? deskripsi;
   final bool preOrder;
   final String? estimasiTersedia;
+  final String? gambar;
   final List<HargaGrosirTier> hargaGrosir;
 
   const Product({
@@ -40,6 +46,7 @@ class Product {
     this.deskripsi,
     required this.preOrder,
     this.estimasiTersedia,
+    this.gambar,
     required this.hargaGrosir,
   });
 
@@ -53,6 +60,7 @@ class Product {
         deskripsi: json['deskripsi'] as String?,
         preOrder: json['pre_order'] as bool,
         estimasiTersedia: json['estimasi_tersedia'] as String?,
+        gambar: json['gambar'] as String?,
         hargaGrosir: (json['harga_grosir'] as List? ?? [])
             .map((e) => HargaGrosirTier.fromJson(e as Map<String, dynamic>))
             .toList(),
@@ -68,6 +76,7 @@ class Product {
         'deskripsi': deskripsi,
         'pre_order': preOrder,
         'estimasi_tersedia': estimasiTersedia,
+        'gambar': gambar,
         'harga_grosir': hargaGrosir.map((e) => e.toJson()).toList(),
       };
 }

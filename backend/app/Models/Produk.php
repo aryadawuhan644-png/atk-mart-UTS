@@ -21,6 +21,7 @@ class Produk extends Model
         'deskripsi',
         'pre_order',
         'estimasi_tersedia',
+        'gambar',
     ];
 
     protected $casts = [
@@ -33,7 +34,8 @@ class Produk extends Model
 
     public function hargaGrosir(): HasMany
     {
-        return $this->hasMany(HargaGrosir::class, 'produk_id', 'id')->orderBy('min_kuantitas', 'asc');
+        return $this->hasMany(HargaGrosir::class, 'produk_id', 'id')
+            ->orderBy('min_kuantitas', 'asc');
     }
 
     public function keranjang(): HasMany

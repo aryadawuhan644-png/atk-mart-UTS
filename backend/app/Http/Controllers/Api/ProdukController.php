@@ -9,6 +9,7 @@ use App\Models\Produk;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class ProdukController extends Controller
 {
@@ -24,9 +25,24 @@ class ProdukController extends Controller
             'kategori' => (string) $produk->kategori,
             'stok' => (int) $produk->stok,
             'tersedia' => (bool) $produk->tersedia,
-            'deskripsi' => $produk->deskripsi !== null ? (string) $produk->deskripsi : null,
+            'deskripsi' => $produk->deskripsi !== null
+                ? (string) $produk->deskripsi
+                : null,
+
+            'gambar' => $produk->gambar
+                ? url(Storage::url($produk->gambar))
+                : null,
+
             'pre_order' => (bool) $produk->pre_order,
-            'estimasi_tersedia' => $produk->estimasi_tersedia ? (is_string($produk->estimasi_tersedia) ? substr($produk->estimasi_tersedia, 0, 10) : $produk->estimasi_tersedia->format('Y-m-d')) : null,
+
+            'estimasi_tersedia' => $produk->estimasi_tersedia
+                ? (
+                    is_string($produk->estimasi_tersedia)
+                        ? substr($produk->estimasi_tersedia, 0, 10)
+                        : $produk->estimasi_tersedia->format('Y-m-d')
+                )
+                : null,
+
             'harga_grosir' => $produk->hargaGrosir->map(function ($g) {
                 return [
                     'min_kuantitas' => (int) $g->min_kuantitas,
@@ -50,9 +66,10 @@ class ProdukController extends Controller
 
         if ($request->filled('cari')) {
             $cari = $request->query('cari');
+
             $query->where(function ($q) use ($cari) {
                 $q->where('nama', 'like', "%{$cari}%")
-                  ->orWhere('deskripsi', 'like', "%{$cari}%");
+                    ->orWhere('deskripsi', 'like', "%{$cari}%");
             });
         }
 
@@ -62,7 +79,10 @@ class ProdukController extends Controller
             'status' => 'sukses',
             'code' => '200',
             'message' => 'Daftar produk berhasil diambil',
-            'data' => $produkList->map(fn($p) => self::formatProduk($p))->values()->all(),
+            'data' => $produkList
+                ->map(fn($p) => self::formatProduk($p))
+                ->values()
+                ->all(),
         ], 200);
     }
 
@@ -106,9 +126,14 @@ class ProdukController extends Controller
             'deskripsi' => 'nullable|string',
             'pre_order' => 'nullable|boolean',
             'estimasi_tersedia' => 'nullable|date',
+
+            'gambar' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+
             'harga_grosir' => 'nullable|array',
-            'harga_grosir.*.min_kuantitas' => 'required_with:harga_grosir|integer|min:2',
-            'harga_grosir.*.harga_satuan' => 'required_with:harga_grosir|integer|min:1',
+            'harga_grosir.*.min_kuantitas' =>
+                'required_with:harga_grosir|integer|min:2',
+            'harga_grosir.*.harga_satuan' =>
+                'required_with:harga_grosir|integer|min:1',
         ]);
 
         $produk = DB::transaction(function () use ($validated) {
@@ -120,7 +145,12 @@ class ProdukController extends Controller
                 'tersedia' => $validated['tersedia'] ?? true,
                 'deskripsi' => $validated['deskripsi'] ?? null,
                 'pre_order' => $validated['pre_order'] ?? false,
-                'estimasi_tersedia' => $validated['estimasi_tersedia'] ?? null,
+                'estimasi_tersedia' =>
+                    $validated['estimasi_tersedia'] ?? null,
+
+                'gambar' => isset($validated['gambar'])
+                    ? $validated['gambar']->store('produk', 'public')
+                    : null,
             ];
 
             $created = Produk::create($dataProduk);
@@ -172,16 +202,42 @@ class ProdukController extends Controller
             'deskripsi' => 'nullable|string',
             'pre_order' => 'sometimes|boolean',
             'estimasi_tersedia' => 'nullable|date',
+
+            'gambar' =>
+                'sometimes|nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+
             'harga_grosir' => 'nullable|array',
-            'harga_grosir.*.min_kuantitas' => 'required_with:harga_grosir|integer|min:2',
-            'harga_grosir.*.harga_satuan' => 'required_with:harga_grosir|integer|min:1',
+            'harga_grosir.*.min_kuantitas' =>
+                'required_with:harga_grosir|integer|min:2',
+            'harga_grosir.*.harga_satuan' =>
+                'required_with:harga_grosir|integer|min:1',
         ]);
 
-        $updatedProduk = DB::transaction(function () use ($produk, $validated) {
-            $produk->update($validated);
+        $gambarLama = $produk->gambar;
+        $gambarBaru = null;
+
+        $dataProduk = $validated;
+
+        unset($dataProduk['harga_grosir']);
+        unset($dataProduk['gambar']);
+
+        if ($request->hasFile('gambar')) {
+            $gambarBaru = $request->file('gambar')
+                ->store('produk', 'public');
+
+            $dataProduk['gambar'] = $gambarBaru;
+        }
+
+        $updatedProduk = DB::transaction(function () use (
+            $produk,
+            $validated,
+            $dataProduk
+        ) {
+            $produk->update($dataProduk);
 
             if (array_key_exists('harga_grosir', $validated)) {
                 $produk->hargaGrosir()->delete();
+
                 if (!empty($validated['harga_grosir'])) {
                     foreach ($validated['harga_grosir'] as $tier) {
                         HargaGrosir::create([
@@ -195,6 +251,10 @@ class ProdukController extends Controller
 
             return $produk->fresh('hargaGrosir');
         });
+
+        if ($gambarBaru && $gambarLama) {
+            Storage::disk('public')->delete($gambarLama);
+        }
 
         return response()->json([
             'status' => 'sukses',
@@ -221,7 +281,7 @@ class ProdukController extends Controller
             ], 404);
         }
 
-        // Cek apakah terkait pesanan aktif (status bukan selesai atau dibatalkan)
+        // Cek apakah terkait pesanan aktif
         $activeOrderCount = PesananDetail::where('produk_id', $produk->id)
             ->whereHas('pesanan', function ($q) {
                 $q->whereNotIn('status', ['selesai', 'dibatalkan']);
@@ -232,12 +292,19 @@ class ProdukController extends Controller
             return response()->json([
                 'status' => 'gagal',
                 'code' => '409',
-                'message' => 'Produk tidak dapat dihapus karena masih terkait dengan pesanan yang sedang aktif',
+                'message' =>
+                    'Produk tidak dapat dihapus karena masih terkait dengan pesanan yang sedang aktif',
                 'data' => null,
             ], 409);
         }
 
+        $gambar = $produk->gambar;
+
         $produk->delete();
+
+        if ($gambar) {
+            Storage::disk('public')->delete($gambar);
+        }
 
         return response()->json([
             'status' => 'sukses',
