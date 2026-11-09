@@ -4,6 +4,7 @@
 
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'api/api_config.dart';
@@ -15,6 +16,7 @@ import 'api/models/checkout_request.dart';
 import 'api/models/kurir.dart';
 import 'api/models/order.dart';
 import 'api/models/product.dart';
+import 'core/motion.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -118,12 +120,18 @@ class SessionPengguna {
     _currentAccount = account;
     ApiConfig.setDemoSession(token: account.token, role: account.role);
     AlamatTersimpan.reset();
+    if (account.role == 'pembeli') {
+      StateKeranjang.refresh();
+    } else {
+      StateKeranjang.reset();
+    }
   }
 
   static void logout() {
     _currentAccount = null;
     ApiConfig.clearDemoSession();
     AlamatTersimpan.reset();
+    StateKeranjang.reset();
   }
 }
 
@@ -1138,6 +1146,7 @@ class ProdukImageWidget extends StatelessWidget {
   final BorderRadius? borderRadius;
   final BoxFit fit;
   final IconData placeholderIcon;
+  final String? heroTag;
 
   const ProdukImageWidget({
     super.key,
@@ -1147,6 +1156,7 @@ class ProdukImageWidget extends StatelessWidget {
     this.borderRadius,
     this.fit = BoxFit.cover,
     this.placeholderIcon = Icons.inventory_2_outlined,
+    this.heroTag,
   });
 
   @override
@@ -1172,44 +1182,57 @@ class ProdukImageWidget extends StatelessWidget {
       );
     }
 
+    Widget content;
     if (resolved == null || resolved.isEmpty) {
-      return placeholder();
+      content = placeholder();
+    } else {
+      content = ValueListenableBuilder<int>(
+        valueListenable: produkUpdateNotifier,
+        builder: (context, tick, _) {
+          final cacheKey = tick > 0 ? '$resolved?v=$tick' : resolved;
+          return ClipRRect(
+            borderRadius: radius,
+            child: Image.network(
+              cacheKey,
+              key: ValueKey(cacheKey),
+              width: width,
+              height: height,
+              fit: fit,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Container(
+                  width: width,
+                  height: height,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF4F5F7),
+                    borderRadius: radius,
+                  ),
+                  alignment: Alignment.center,
+                  child: const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                );
+              },
+              errorBuilder: (context, error, stackTrace) => placeholder(),
+            ),
+          );
+        },
+      );
     }
 
-    return ValueListenableBuilder<int>(
-      valueListenable: produkUpdateNotifier,
-      builder: (context, tick, _) {
-        final cacheKey = tick > 0 ? '$resolved?v=$tick' : resolved;
-        return ClipRRect(
-          borderRadius: radius,
-          child: Image.network(
-            cacheKey,
-            key: ValueKey(cacheKey),
-            width: width,
-            height: height,
-            fit: fit,
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Container(
-                width: width,
-                height: height,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF4F5F7),
-                  borderRadius: radius,
-                ),
-                alignment: Alignment.center,
-                child: const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              );
-            },
-            errorBuilder: (context, error, stackTrace) => placeholder(),
-          ),
-        );
-      },
-    );
+    if (heroTag != null && !MotionConstants.animationsDisabled(context)) {
+      return Hero(
+        tag: heroTag!,
+        child: Material(
+          color: Colors.transparent,
+          child: content,
+        ),
+      );
+    }
+
+    return content;
   }
 }
 
@@ -1228,6 +1251,12 @@ class _PembeliShellPageState extends State<PembeliShellPage> {
   int _currentIndex = 0;
   final Set<int> _visited = {0};
   final List<int> _refreshTicks = [0, 0, 0, 0];
+
+  @override
+  void initState() {
+    super.initState();
+    StateKeranjang.refresh();
+  }
 
   void _onDestinationSelected(int index) {
     setState(() {
@@ -1286,8 +1315,10 @@ class _PembeliShellPageState extends State<PembeliShellPage> {
             label: 'Riwayat',
           ),
           NavigationDestination(
-            icon: Icon(Icons.shopping_cart_outlined),
-            selectedIcon: Icon(Icons.shopping_cart),
+            icon: const AnimatedCartBadgeIcon(
+                icon: Icons.shopping_cart_outlined),
+            selectedIcon:
+                const AnimatedCartBadgeIcon(icon: Icons.shopping_cart),
             label: 'Keranjang',
           ),
         ],
@@ -1325,6 +1356,105 @@ class _ProdukListPageState extends State<ProdukListPage> {
     'Harga Termurah',
     'Harga Termahal',
   ];
+
+  final Set<int> _animatingAddedProductIds = <int>{};
+  bool _isReloading = false;
+
+  Future<void> _handleReload() async {
+    if (_isReloading) return;
+    setState(() => _isReloading = true);
+    _reload();
+    await Future.delayed(const Duration(milliseconds: 350));
+    if (mounted) {
+      setState(() => _isReloading = false);
+    }
+  }
+
+  Future<void> _beliProduk(Product p) async {
+    final bool canBuy = p.tersedia && (p.preOrder || p.stok > 0);
+    if (!canBuy) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            !p.tersedia
+                ? 'Produk "${p.nama}" saat ini tidak tersedia.'
+                : 'Stok "${p.nama}" sudah habis.',
+          ),
+          backgroundColor: const Color(0xFFE14B4B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    HapticFeedback.selectionClick();
+
+    setState(() {
+      _animatingAddedProductIds.add(p.id);
+    });
+
+    try {
+      await _api.addKeranjang(produkId: p.id, jumlah: 1);
+      StateKeranjang.increment(1);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded,
+                  color: Color(0xFF34D399), size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '${p.nama} ditambahkan ke keranjang',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: Colors.white,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF1E293B),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          duration: const Duration(seconds: 3),
+          action: SnackBarAction(
+            label: 'Lihat',
+            textColor: const Color(0xFF60A5FA),
+            onPressed: () {
+              AppNav.push(context, const KeranjangPage());
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(formatAppErrorMessage(e)),
+          backgroundColor: const Color(0xFFE14B4B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      await Future.delayed(MotionConstants.cartSuccess);
+      if (mounted) {
+        setState(() {
+          _animatingAddedProductIds.remove(p.id);
+        });
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -1472,10 +1602,12 @@ class _ProdukListPageState extends State<ProdukListPage> {
 
   Widget _buildActionButton(Product p) {
     final bool canBuy = p.tersedia && (p.preOrder || p.stok > 0);
+    final bool isAdded = _animatingAddedProductIds.contains(p.id);
 
     if (!canBuy) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        constraints: const BoxConstraints(minHeight: 36),
         decoration: BoxDecoration(
           color: Colors.grey.shade100,
           borderRadius: BorderRadius.circular(8),
@@ -1492,30 +1624,75 @@ class _ProdukListPageState extends State<ProdukListPage> {
       );
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: p.preOrder ? const Color(0xFFE0A32E) : const Color(0xFF0D0D12),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            p.preOrder ? Icons.schedule : Icons.add_shopping_cart,
-            size: 14,
-            color: Colors.white,
+    final btnColor = isAdded
+        ? const Color(0xFF2E9E5B)
+        : (p.preOrder ? const Color(0xFFE0A32E) : const Color(0xFF0D0D12));
+
+    return PressableScale(
+      enableHaptic: true,
+      onPressed: () => _beliProduk(p),
+      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+      child: Center(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: btnColor,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: isAdded
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFF2E9E5B).withValues(alpha: 0.3),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
           ),
-          const SizedBox(width: 4),
-          Text(
-            p.preOrder ? 'Pre-Order' : 'Beli',
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            transitionBuilder: (child, animation) =>
+                ScaleTransition(scale: animation, child: child),
+            child: isAdded
+                ? const Row(
+                    key: ValueKey('added'),
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_rounded, size: 14, color: Colors.white),
+                      SizedBox(width: 4),
+                      Text(
+                        'Ditambah',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    key: ValueKey(p.preOrder ? 'po' : 'beli'),
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        p.preOrder ? Icons.schedule : Icons.add_shopping_cart,
+                        size: 14,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        p.preOrder ? 'Pre-Order' : 'Beli',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1877,6 +2054,13 @@ class _ProdukListPageState extends State<ProdukListPage> {
         centerTitle: false,
         actions: [
           IconButton(
+            icon: const AnimatedCartBadgeIcon(),
+            tooltip: 'Keranjang',
+            onPressed: () {
+              AppNav.push(context, const KeranjangPage());
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Segarkan',
             onPressed: _reload,
@@ -1945,7 +2129,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
 
           // 2. Filter Kategori Horisontal (Server-Side)
           SizedBox(
-            height: 42,
+            height: 48,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
@@ -1954,34 +2138,57 @@ class _ProdukListPageState extends State<ProdukListPage> {
               itemBuilder: (context, i) {
                 final kat = _kategoriList[i];
                 final isSelected = _selectedKategori == kat;
-                return ChoiceChip(
-                  label: Text(kat),
-                  selected: isSelected,
-                  selectedColor: const Color(0xFF2F6BFF),
-                  backgroundColor: Colors.white,
-                  labelStyle: TextStyle(
-                    fontSize: 13,
-                    fontWeight:
-                        isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected ? Colors.white : const Color(0xFF15151A),
-                  ),
-                  side: BorderSide(
-                    color: isSelected
-                        ? const Color(0xFF2F6BFF)
-                        : const Color(0xFFE6E6EC),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  showCheckmark: false,
-                  onSelected: (selected) {
-                    if (selected && _selectedKategori != kat) {
+                return PressableScale(
+                  enableHaptic: true,
+                  onPressed: () {
+                    if (_selectedKategori != kat) {
                       setState(() {
                         _selectedKategori = kat;
                         _futureProduk = _fetchData();
                       });
                     }
                   },
+                  constraints: const BoxConstraints(minHeight: 48),
+                  child: Center(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeInOut,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? const Color(0xFF2F6BFF)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xFF2F6BFF)
+                              : const Color(0xFFE6E6EC),
+                          width: isSelected ? 1.2 : 0.8,
+                        ),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: const Color(0xFF2F6BFF)
+                                      .withValues(alpha: 0.22),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Text(
+                        kat,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.w500,
+                          color:
+                              isSelected ? Colors.white : const Color(0xFF15151A),
+                        ),
+                      ),
+                    ),
+                  ),
                 );
               },
             ),
@@ -2063,7 +2270,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
               future: _futureProduk,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const ProductListSkeleton();
                 }
 
                 if (snapshot.hasError) {
@@ -2073,8 +2280,20 @@ class _ProdukListPageState extends State<ProdukListPage> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.error_outline,
-                              size: 48, color: Color(0xFFE14B4B)),
+                          TweenAnimationBuilder<double>(
+                            tween: Tween<double>(begin: 0.0, end: 1.0),
+                            duration: const Duration(milliseconds: 350),
+                            curve: Curves.easeOut,
+                            builder: (context, val, child) => Opacity(
+                              opacity: val,
+                              child: Transform.scale(
+                                scale: 0.85 + 0.15 * val,
+                                child: child,
+                              ),
+                            ),
+                            child: const Icon(Icons.cloud_off_rounded,
+                                size: 54, color: Color(0xFFE14B4B)),
+                          ),
                           const SizedBox(height: 12),
                           Text(
                             _formatErrorMessage(snapshot.error!),
@@ -2085,14 +2304,30 @@ class _ProdukListPageState extends State<ProdukListPage> {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF2F6BFF),
-                              foregroundColor: Colors.white,
+                          PressableScale(
+                            enableHaptic: true,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF2F6BFF),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 10),
+                                minimumSize: const Size(120, 48),
+                              ),
+                              icon: _isReloading
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Icons.refresh, size: 18),
+                              label:
+                                  Text(_isReloading ? 'Mencoba...' : 'Coba Lagi'),
+                              onPressed: _isReloading ? null : _handleReload,
                             ),
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('Coba Lagi'),
-                            onPressed: _reload,
                           ),
                         ],
                       ),
@@ -2159,117 +2394,124 @@ class _ProdukListPageState extends State<ProdukListPage> {
                     itemCount: produkList.length,
                     itemBuilder: (context, index) {
                       final produk = produkList[index];
-                      return Card(
-                        color: Colors.white,
-                        elevation: 0.8,
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 6),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          side: const BorderSide(
-                              color: Color(0xFFE6E6EC), width: 0.8),
-                        ),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    ProdukDetailPage(produk: produk),
-                              ),
-                            );
-                            if (mounted) _reload();
-                          },
-                        child: Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              ProdukImageWidget(
-                                imageUrl: produk.gambar,
-                                width: 84,
-                                height: 84,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
+                      return StaggeredListItem(
+                        index: index,
+                        child: PressableScale(
+                          child: Card(
+                            color: Colors.white,
+                            elevation: 0.8,
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 6),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              side: const BorderSide(
+                                  color: Color(0xFFE6E6EC), width: 0.8),
+                            ),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(14),
+                              onTap: () async {
+                                await AppNav.push(
+                                  context,
+                                  ProdukDetailPage(produk: produk),
+                                );
+                                if (mounted) _reload();
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(14),
+                                child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            produk.nama,
+                                    ProdukImageWidget(
+                                      imageUrl: produk.gambar,
+                                      width: 84,
+                                      height: 84,
+                                      borderRadius: BorderRadius.circular(10),
+                                      heroTag: 'product-img-${produk.id}',
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  produk.nama,
+                                                  style: const TextStyle(
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Color(0xFF15151A),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              _buildStatusBadge(produk),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            produk.kategori,
                                             style: const TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.bold,
-                                              color: Color(0xFF15151A),
+                                              fontSize: 12,
+                                              color: Color(0xFF8A8A93),
                                             ),
                                           ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        _buildStatusBadge(produk),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      produk.kategori,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Color(0xFF8A8A93),
-                                      ),
-                                    ),
-                                    if (produk.deskripsi != null &&
-                                        produk.deskripsi!.isNotEmpty) ...[
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        produk.deskripsi!,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: Colors.grey.shade800,
-                                        ),
-                                      ),
-                                    ],
-                                    const SizedBox(height: 10),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
+                                          if (produk.deskripsi != null &&
+                                              produk.deskripsi!.isNotEmpty) ...[
+                                            const SizedBox(height: 6),
                                             Text(
-                                              _formatRupiah(produk.harga),
-                                              style: const TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                                color: Color(0xFF15151A),
+                                              produk.deskripsi!,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: Colors.grey.shade800,
                                               ),
                                             ),
-                                            _buildGrosirPill(produk),
                                           ],
-                                        ),
-                                        _buildActionButton(produk),
-                                      ],
+                                          const SizedBox(height: 10),
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.end,
+                                            children: [
+                                              Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    _formatRupiah(produk.harga),
+                                                    style: const TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: Color(0xFF15151A),
+                                                    ),
+                                                  ),
+                                                  _buildGrosirPill(produk),
+                                                ],
+                                              ),
+                                              _buildActionButton(produk),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ],
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              );
+                      );
+                    },
+                  ),
+                );
               },
             ),
           ),
@@ -2346,34 +2588,42 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
       );
 
       if (!mounted) return;
+      StateKeranjang.increment(_jumlah);
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
             children: [
-              const Icon(Icons.check_circle_outline,
-                  color: Colors.white, size: 20),
-              const SizedBox(width: 8),
+              const Icon(Icons.check_circle_rounded,
+                  color: Color(0xFF34D399), size: 20),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   '$_jumlah unit "${product.nama}" berhasil dimasukkan ke keranjang.',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: Colors.white,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
           action: SnackBarAction(
-            label: 'Keranjang',
-            textColor: Colors.white,
+            label: 'Lihat',
+            textColor: const Color(0xFF60A5FA),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const KeranjangPage()),
-              );
+              AppNav.push(context, const KeranjangPage());
             },
           ),
-          backgroundColor: const Color(0xFF2E9E5B),
-          duration: const Duration(seconds: 2),
+          backgroundColor: const Color(0xFF1E293B),
+          duration: const Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         ),
       );
     } on ConflictException catch (e) {
@@ -2612,13 +2862,10 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
         title: Text(widget.produk.nama),
         actions: [
           IconButton(
-            icon: const Icon(Icons.shopping_cart_outlined),
+            icon: const AnimatedCartBadgeIcon(),
             tooltip: 'Keranjang Belanja',
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const KeranjangPage()),
-              );
+              AppNav.push(context, const KeranjangPage());
             },
           ),
         ],
@@ -2712,6 +2959,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                           height: 220,
                           borderRadius: BorderRadius.circular(14),
                           fit: BoxFit.cover,
+                          heroTag: 'product-img-${product.id}',
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -3037,38 +3285,42 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                           Expanded(
                             child: SizedBox(
                               height: 48,
-                              child: OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: !canOrder
-                                      ? Colors.grey.shade400
-                                      : const Color(0xFF0D0D12),
-                                  side: BorderSide(
-                                    color: !canOrder
-                                        ? Colors.grey.shade300
+                              child: PressableScale(
+                                enabled: canOrder && !_isAddingToCart && !_isBuyingNow,
+                                enableHaptic: true,
+                                child: OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: !canOrder
+                                        ? Colors.grey.shade400
                                         : const Color(0xFF0D0D12),
-                                    width: 1.5,
+                                    side: BorderSide(
+                                      color: !canOrder
+                                          ? Colors.grey.shade300
+                                          : const Color(0xFF0D0D12),
+                                      width: 1.5,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
                                   ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                                  onPressed: (!canOrder || _isAddingToCart || _isBuyingNow)
+                                      ? null
+                                      : () => _tambahKeKeranjang(product),
+                                  icon: _isAddingToCart
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                        )
+                                      : Icon(
+                                          product.preOrder ? Icons.schedule : Icons.add_shopping_cart,
+                                          size: 18,
+                                        ),
+                                  label: Text(
+                                    product.preOrder ? 'Keranjang PO' : 'Keranjang',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                ),
-                                onPressed: (!canOrder || _isAddingToCart || _isBuyingNow)
-                                    ? null
-                                    : () => _tambahKeKeranjang(product),
-                                icon: _isAddingToCart
-                                    ? const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(strokeWidth: 2),
-                                      )
-                                    : Icon(
-                                        product.preOrder ? Icons.schedule : Icons.add_shopping_cart,
-                                        size: 18,
-                                      ),
-                                label: Text(
-                                  product.preOrder ? 'Keranjang PO' : 'Keranjang',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ),
@@ -3077,34 +3329,38 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                           Expanded(
                             child: SizedBox(
                               height: 48,
-                              child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: !canOrder
-                                      ? Colors.grey.shade400
-                                      : (product.preOrder ? const Color(0xFFE0A32E) : const Color(0xFF2F6BFF)),
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                              child: PressableScale(
+                                enabled: canOrder && !_isAddingToCart && !_isBuyingNow,
+                                enableHaptic: true,
+                                child: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: !canOrder
+                                        ? Colors.grey.shade400
+                                        : (product.preOrder ? const Color(0xFFE0A32E) : const Color(0xFF2F6BFF)),
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
                                   ),
-                                ),
-                                onPressed: (!canOrder || _isAddingToCart || _isBuyingNow)
-                                    ? null
-                                    : () => _beliSekarang(product),
-                                icon: _isBuyingNow
-                                    ? const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor: AlwaysStoppedAnimation(Colors.white),
-                                        ),
-                                      )
-                                    : const Icon(Icons.flash_on, size: 18),
-                                label: Text(
-                                  product.preOrder ? 'Beli PO' : 'Beli Sekarang',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                  overflow: TextOverflow.ellipsis,
+                                  onPressed: (!canOrder || _isAddingToCart || _isBuyingNow)
+                                      ? null
+                                      : () => _beliSekarang(product),
+                                  icon: _isBuyingNow
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation(Colors.white),
+                                          ),
+                                        )
+                                      : const Icon(Icons.flash_on, size: 18),
+                                  label: Text(
+                                    product.preOrder ? 'Beli PO' : 'Beli Sekarang',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
                               ),
                             ),
