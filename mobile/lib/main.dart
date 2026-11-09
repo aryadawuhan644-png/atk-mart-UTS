@@ -1626,7 +1626,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
 
     final btnColor = isAdded
         ? const Color(0xFF2E9E5B)
-        : (p.preOrder ? const Color(0xFFE0A32E) : const Color(0xFF0D0D12));
+        : (p.preOrder ? const Color(0xFFE0A32E) : const Color(0xFF2F6BFF));
 
     return PressableScale(
       enableHaptic: true,
