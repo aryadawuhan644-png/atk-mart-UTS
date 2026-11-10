@@ -15,6 +15,7 @@ class Pelanggan extends Model
     protected $fillable = [
         'id',
         'nama',
+        'user_id',
     ];
 
     public function keranjang(): HasMany

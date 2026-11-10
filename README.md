@@ -1,273 +1,157 @@
 # ATK Mart
 
-**Aplikasi Toko Online Alat Tulis Kantor (ATK)**
+**Aplikasi toko online alat tulis kantor (ATK)**
 
-ATK Mart merupakan aplikasi toko online yang dikembangkan menggunakan Laravel sebagai REST API Backend dan Flutter sebagai aplikasi Frontend. Aplikasi ini menyediakan fitur pengelolaan produk dan transaksi pembelian alat tulis kantor.
+ATK Mart menggunakan Laravel sebagai backend REST API dan Flutter sebagai aplikasi mobile. Aplikasi mendukung katalog, gambar produk, keranjang belanja, checkout, pesanan, serta akses pembeli dan pengelola.
 
-## Teknologi yang Digunakan
+## Teknologi
 
-### Backend
-- Laravel
-- PHP
-- MySQL
-- REST API
-- Bearer Token Authentication
+- Backend: Laravel, PHP, MySQL, REST API
+- Mobile: Flutter, Dart, HTTP client, Image Picker
+- Tools: Visual Studio Code, Laragon, Postman, Git
 
-### Frontend
-- Flutter
-- Dart
-- HTTP Client
-- Image Picker
-
-### Tools
-- Visual Studio Code
-- Laragon
-- Postman
-- Git & GitHub
-- phpMyAdmin
-
-## Struktur Folder
+## Struktur proyek
 
 ```text
 atk-mart/
-│
-├── backend/          # Laravel REST API
-│   ├── app/
-│   ├── database/
-│   ├── routes/
-│   ├── storage/
-│   └── .env
-│
-├── mobile/           # Flutter Application
-│   ├── lib/
-│   ├── assets/
-│   ├── android/
-│   └── pubspec.yaml
-│
-└── README.md
+├── backend/   # Laravel REST API
+└── mobile/    # Flutter app
 ```
 
-## Fitur Aplikasi
+## Persyaratan
 
-### Backend
-- REST API untuk pengelolaan data.
-- Pengelolaan produk.
-- Upload dan pengelolaan gambar produk.
-- Pengelolaan keranjang belanja.
-- Pengelolaan pesanan.
-- Pengelolaan status pesanan.
-- Pengelolaan kurir dan tarif pengiriman.
-- Pemisahan akses pembeli dan pengelola.
+- PHP dan Composer
+- MySQL
+- Flutter SDK dan Dart SDK
+- Android Studio atau Chrome untuk menjalankan aplikasi Flutter
 
-### Flutter
-- Tampilan katalog produk.
-- Menampilkan gambar produk.
-- Pengelolaan keranjang.
-- Proses pemesanan.
-- Riwayat pesanan.
-- Navigasi aplikasi pembeli.
-- Integrasi dengan Laravel REST API.
+## Menyiapkan backend
 
-## Persyaratan Sistem
-
-Pastikan perangkat sudah memiliki:
-- PHP dan Composer.
-- MySQL.
-- Laravel dependencies.
-- Flutter SDK.
-- Dart SDK.
-- Android Studio atau browser untuk menjalankan Flutter.
-
-## Instalasi Backend
-
-1. Masuk ke folder backend:
+Jalankan perintah berikut di PowerShell:
 
 ```powershell
 cd backend
-```
-
-2. Install dependencies:
-
-```powershell
 composer install
-```
-
-3. Salin konfigurasi environment jika `.env` belum tersedia:
-
-```powershell
 Copy-Item .env.example .env
-```
-
-4. Generate application key:
-
-```powershell
 php artisan key:generate
 ```
 
-5. Buat database MySQL dengan nama:
-
-```text
-atk_mart
-```
-
-6. Sesuaikan konfigurasi database pada file `.env`:
+Buat database MySQL `atk_mart`, lalu sesuaikan konfigurasi `DB_*` di `.env`.
+Tambahkan token API demo berikut; token di aplikasi Flutter harus cocok dengan
+nilai di backend:
 
 ```env
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=atk_mart
-DB_USERNAME=root
-DB_PASSWORD=
+TOKEN_STATIS_PEMBELI=token-pembeli-atk-mart-2026
+TOKEN_STATIS_PEMBELI_2=token-pembeli-2-atk-mart-2026
+TOKEN_STATIS_PENGELOLA=token-pengelola-atk-mart-2026
 ```
 
-Sesuaikan username dan password dengan konfigurasi MySQL masing-masing.
-
-7. Jalankan migrasi database:
+Jalankan migrasi dan server:
 
 ```powershell
 php artisan migrate
-```
-
-8. Buat symbolic link untuk penyimpanan gambar:
-
-```powershell
 php artisan storage:link
-```
-
-## Menjalankan Backend
-
-Dari folder `backend`, jalankan:
-
-```powershell
 php artisan serve --host=0.0.0.0 --port=8000
 ```
 
-Alamat API:
+API lokal tersedia di `http://127.0.0.1:8000/api`. Untuk perangkat lain di
+jaringan Wi-Fi yang sama, gunakan alamat IP laptop yang menjalankan Laravel.
+Pastikan MySQL dan server Laravel tetap berjalan.
 
-```text
-http://127.0.0.1:8000/api
-```
+## Menyiapkan Flutter
 
-Untuk perangkat lain dalam jaringan Wi-Fi yang sama, gunakan IP laptop server, misalnya:
-
-```text
-http://172.16.187.57:8000/api
-```
-
-Pastikan laptop server tetap menyala dan Laravel serta MySQL berjalan.
-
-## Instalasi Flutter
-
-1. Buka terminal baru.
-2. Masuk ke folder Flutter:
+Buka terminal baru:
 
 ```powershell
 cd mobile
-```
-
-3. Install dependencies:
-
-```powershell
 flutter pub get
+Copy-Item assets/config/env.json.example assets/config/env.json
 ```
 
-4. Periksa konfigurasi API pada:
-
-```text
-assets/config/env.json
-```
-
-Contoh konfigurasi untuk menjalankan Flutter di laptop server sendiri:
+Edit `assets/config/env.json` untuk mengisi token yang sama dengan `.env`
+backend dan alamat API yang dapat dijangkau dari perangkat. Contoh untuk laptop:
 
 ```json
 {
   "active_role": "pembeli",
   "token_pembeli": "token-pembeli-atk-mart-2026",
+  "token_pembeli_2": "token-pembeli-2-atk-mart-2026",
   "token_pengelola": "token-pengelola-atk-mart-2026",
   "api_base_url": "http://127.0.0.1:8000/api"
 }
 ```
 
-Untuk perangkat lain yang mengakses server melalui Wi-Fi, gunakan alamat IP laptop server sebagai pengganti `127.0.0.1`.
-
-5. Jalankan aplikasi:
+Untuk Android Emulator, gunakan `http://10.0.2.2:8000/api`. Untuk perangkat
+fisik di jaringan Wi-Fi, gunakan IP laptop server, misalnya
+`http://172.16.187.57:8000/api`. Setelah konfigurasi:
 
 ```powershell
 flutter run
 ```
 
-Untuk menjalankan melalui Chrome:
+Untuk menjalankan di Chrome:
 
 ```powershell
 flutter run -d chrome
 ```
 
+File lokal `mobile/assets/config/env.json` tidak boleh di-commit. Bearer token
+statis hanya ditujukan untuk demonstrasi/pengembangan; jangan gunakan token
+contoh atau membuka server demo ke jaringan publik.
+
 ## Pengujian API
 
-API dapat diuji menggunakan Postman.
-
-Base URL:
-
-```text
-http://127.0.0.1:8000/api
-```
-
-Untuk pengujian dari perangkat lain, gunakan IP laptop server.
-
-Contoh endpoint:
+Base URL lokal: `http://127.0.0.1:8000/api`
 
 | Method | Endpoint | Keterangan |
 |---|---|---|
-| GET | `/produk` | Mengambil daftar produk |
-| POST | `/produk` | Menambahkan produk |
-| GET | `/produk/{id}` | Mengambil detail produk |
-| PUT | `/produk/{id}` | Mengubah produk |
-| DELETE | `/produk/{id}` | Menghapus produk |
+| GET | `/produk` | Daftar produk |
+| GET | `/produk/{id}` | Detail produk |
+| GET | `/produk/{id}/gambar` | Gambar produk |
+| POST | `/produk` | Tambah produk (pengelola) |
+| PUT | `/produk/{id}` | Ubah produk (pengelola) |
+| DELETE | `/produk/{id}` | Hapus produk (pengelola) |
+| GET/POST/PUT/DELETE | `/keranjang` | Keranjang pembeli |
+| POST | `/checkout` | Buat pesanan |
+| GET | `/pesanan` | Riwayat pesanan |
 
-Gunakan token sesuai peran pengguna apabila endpoint memerlukan autentikasi.
+Endpoint yang memerlukan autentikasi memakai header
+`Authorization: Bearer <token>`. Katalog, detail produk, gambar, dan daftar
+kurir dapat diakses tanpa token. Flutter menyediakan pilihan pengurutan produk
+berdasarkan harga.
 
-## Kolaborasi Tim
+## Kolaborasi Git
 
-Repository GitHub:
-
-https://github.com/aryadawuhan644-png/atk-mart-UTS
-
-Untuk mengambil perubahan terbaru:
-
-```powershell
-git pull origin main
-```
-
-Untuk melihat status perubahan:
+Sebelum memperbarui branch, pastikan perubahan lokal sudah disimpan atau
+di-commit:
 
 ```powershell
 git status
+git fetch origin
+git switch Khatarina_24102033
+git merge origin/main
 ```
 
-Untuk mengirim perubahan ke GitHub:
+Kirim perubahan melalui branch kerja dan Pull Request, bukan push langsung ke
+`main`:
 
 ```powershell
-git add .
+git add <file-yang-diubah>
 git commit -m "Deskripsi perubahan"
-git push origin main
+git push -u origin Khatarina_24102033
 ```
 
-Pastikan perubahan anggota tim sudah diperiksa sebelum melakukan commit dan push.
+## Catatan keamanan
 
-## Catatan Penting
-
-- Jangan mengunggah file `.env` ke GitHub.
-- Jangan mengunggah password database atau token rahasia.
-- Jangan menjalankan `php artisan migrate:fresh` pada database yang berisi data penting.
-- Backup database sebelum melakukan perubahan struktur database.
-- Perangkat lain tidak perlu menjalankan MySQL. Cukup mengakses API melalui jaringan yang sama.
+- Jangan commit file `.env` atau `mobile/assets/config/env.json`.
+- Jangan gunakan token demo untuk deployment atau layanan yang terekspos publik.
+- Hindari `php artisan migrate:fresh` pada database yang memiliki data penting.
+- Backup database sebelum mengubah skema.
 - Jangan membuka port MySQL ke jaringan publik.
 
 ## Pengembang
 
-**Proyek:** ATK Mart  
-**Jenis:** Aplikasi Toko Online Alat Tulis Kantor  
-**Backend:** Laravel REST API  
-**Frontend:** Flutter  
-**Database:** MySQL
+- Proyek: ATK Mart
+- Backend: Laravel REST API
+- Frontend: Flutter
+- Database: MySQL
