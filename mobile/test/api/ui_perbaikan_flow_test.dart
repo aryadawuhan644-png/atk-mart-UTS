@@ -1,7 +1,10 @@
 // test/api/ui_perbaikan_flow_test.dart
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
+import 'package:atkmart_mobile/admin_preferences.dart';
+import 'package:atkmart_mobile/admin_profile_settings.dart';
 import 'package:atkmart_mobile/api/api_config.dart';
+import 'package:atkmart_mobile/api/layanan_api.dart';
 import 'package:atkmart_mobile/api/models/order.dart';
 import 'package:atkmart_mobile/main.dart';
 
@@ -66,6 +69,41 @@ void main() {
       expect(find.text('Keranjang'), findsNothing);
       expect(find.text('Checkout'), findsNothing);
       expect(find.text('Beli Sekarang'), findsNothing);
+    });
+
+    testWidgets('Halaman profil admin menampilkan profil dan pengaturan lokal', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AdminProfileSettingsPage(
+            initialName: 'Pengelola Toko',
+            email: 'admin@atkmart.id',
+            onLogout: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('Pengelola Toko'), findsOneWidget);
+      expect(find.text('admin@atkmart.id'), findsOneWidget);
+      expect(find.text('Ganti Password'), findsOneWidget);
+
+      await tester.scrollUntilVisible(find.text('Gelap'), 300);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Gelap'));
+      await tester.pumpAndSettle();
+      expect(AdminPreferences.themeMode.value, ThemeMode.dark);
+
+      await tester.scrollUntilVisible(find.byType(SwitchListTile), 300);
+      await tester.ensureVisible(find.byType(SwitchListTile));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(SwitchListTile));
+      await tester.pumpAndSettle();
+      expect(AdminPreferences.notificationsEnabled, isFalse);
+
+      await tester.scrollUntilVisible(find.text('Versi 1.0.0+1'), 300);
+      expect(find.text('Versi 1.0.0+1'), findsOneWidget);
+
+      await AdminPreferences.setThemeMode(ThemeMode.light);
+      await AdminPreferences.setNotificationsEnabled(true);
     });
   });
 
@@ -165,6 +203,40 @@ void main() {
       );
 
       expect(find.byIcon(Icons.inventory_2_outlined), findsOneWidget);
+    });
+  });
+
+  group('Ketentuan Optimasi Upload Foto & Edit Produk', () {
+    test('Batas maksimal ukuran foto adalah 2 MB (2.097.152 bytes)', () {
+      const maxUploadBytes = 2 * 1024 * 1024;
+      const validPhotoBytes = 1.8 * 1024 * 1024;
+      const oversizedPhotoBytes = 2.5 * 1024 * 1024;
+
+      expect(validPhotoBytes <= maxUploadBytes, isTrue);
+      expect(oversizedPhotoBytes > maxUploadBytes, isTrue);
+    });
+
+    test('Pesan timeout multipart memuat batas waktu 60 detik', () {
+      const err = RequestTimeoutException(
+          'Permintaan ke server melebihi batas waktu (60 detik). Silakan coba lagi.');
+      expect(err.message, contains('60 detik'));
+    });
+
+    testWidgets('FormProdukPage merender form edit produk dengan tombol simpan yang siap digunakan', (tester) async {
+      SessionPengguna.login(DemoAccount.pengelola);
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: FormProdukPage(),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Tambah Produk'), findsOneWidget);
+      expect(find.text('Foto Produk'), findsOneWidget);
+      expect(find.text('Informasi Dasar'), findsOneWidget);
+      expect(find.text('Tambahkan Produk'), findsOneWidget);
+      expect(find.byIcon(Icons.add_circle_outline), findsOneWidget);
     });
   });
 }

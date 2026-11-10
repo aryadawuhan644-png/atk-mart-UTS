@@ -73,16 +73,23 @@ class ProdukController extends Controller
             });
         }
 
-        $produkList = $query->orderBy('id', 'asc')->get();
+        $produkPaginator = $query
+            ->orderBy('id', 'asc')
+            ->paginate(max(1, (int) $request->query('per_page', 10)));
 
         return response()->json([
             'status' => 'sukses',
             'code' => '200',
             'message' => 'Daftar produk berhasil diambil',
-            'data' => $produkList
+            'data' => $produkPaginator->getCollection()
                 ->map(fn($p) => self::formatProduk($p))
                 ->values()
                 ->all(),
+            'current_page' => $produkPaginator->currentPage(),
+            'per_page' => $produkPaginator->perPage(),
+            'total' => $produkPaginator->total(),
+            'last_page' => $produkPaginator->lastPage(),
+            'has_more_pages' => $produkPaginator->hasMorePages(),
         ], 200);
     }
 

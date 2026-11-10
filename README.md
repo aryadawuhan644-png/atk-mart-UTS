@@ -68,8 +68,10 @@ flutter pub get
 Copy-Item assets/config/env.json.example assets/config/env.json
 ```
 
-Edit `assets/config/env.json` untuk mengisi token yang sama dengan `.env`
-backend dan alamat API yang dapat dijangkau dari perangkat. Contoh untuk laptop:
+Contoh konfigurasi sudah memakai token demo yang sama dengan `.env.example`.
+Alamat API otomatis dipilih untuk web, desktop, dan Android Emulator jika
+`api_base_url` dibiarkan kosong. Untuk perangkat fisik, isi alamat IP laptop
+yang menjalankan backend:
 
 ```json
 {
@@ -77,13 +79,12 @@ backend dan alamat API yang dapat dijangkau dari perangkat. Contoh untuk laptop:
   "token_pembeli": "token-pembeli-atk-mart-2026",
   "token_pembeli_2": "token-pembeli-2-atk-mart-2026",
   "token_pengelola": "token-pengelola-atk-mart-2026",
-  "api_base_url": "http://127.0.0.1:8000/api"
+  "api_base_url": "http://192.168.1.10:8000/api"
 }
 ```
 
-Untuk Android Emulator, gunakan `http://10.0.2.2:8000/api`. Untuk perangkat
-fisik di jaringan Wi-Fi, gunakan IP laptop server, misalnya
-`http://172.16.187.57:8000/api`. Setelah konfigurasi:
+Pastikan perangkat fisik dan laptop berada di jaringan Wi-Fi yang sama.
+Setelah konfigurasi:
 
 ```powershell
 flutter run

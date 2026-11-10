@@ -1,12 +1,13 @@
 // lib/main.dart
-// Entry point for ATK Mart Aoen mobile app.
+// Entry point for ATK Mart mobile app.
 // Uses only setState, Navigator, and callbacks (no Provider/Riverpod/Bloc).
 
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'admin_preferences.dart';
+import 'admin_profile_settings.dart';
 import 'api/api_config.dart';
 import 'api/layanan_api.dart';
 
@@ -17,11 +18,13 @@ import 'api/models/checkout_request.dart';
 import 'api/models/kurir.dart';
 import 'api/models/order.dart';
 import 'api/models/product.dart';
+import 'core/motion.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ApiConfig.initLocalConfig();
+  await AdminPreferences.initialize();
   runApp(const AtkMartApp());
 }
 
@@ -38,6 +41,23 @@ class DemoAccount {
   final String deskripsi;
   final IconData icon;
   final Color color;
+
+  String get namaPelanggan {
+    final idx = subNama.indexOf('(');
+    if (idx != -1) return subNama.substring(0, idx).trim();
+    return subNama;
+  }
+
+  String get idPelanggan {
+    final start = subNama.indexOf('(');
+    final end = subNama.indexOf(')');
+    if (start != -1 && end != -1 && end > start) {
+      return subNama.substring(start + 1, end).trim();
+    }
+    final match = RegExp(r'#\d+').firstMatch(subNama);
+    if (match != null) return match.group(0)!;
+    return id;
+  }
 
   const DemoAccount({
     required this.id,
@@ -60,7 +80,7 @@ class DemoAccount {
     role: 'pembeli',
     deskripsi: 'Akun pelanggan utama untuk keranjang belanja, checkout, dan riwayat pesanan mandiri.',
     icon: Icons.person_rounded,
-    color: Color(0xFF011C6B),
+    color: Color(0xFF2F6BFF),
   );
 
   static const DemoAccount pembeli2 = DemoAccount(
@@ -72,19 +92,19 @@ class DemoAccount {
     role: 'pembeli',
     deskripsi: 'Akun pelanggan terpisah total untuk membuktikan isolasi data keranjang & pesanan antar pelanggan.',
     icon: Icons.person_outline_rounded,
-    color: Color(0xFF955A0B),
+    color: Color(0xFF8E44AD),
   );
 
   static const DemoAccount pengelola = DemoAccount(
     id: 'pengelola',
     nama: 'Pengelola Toko',
-    subNama: 'Administrator ATK Mart Aoen',
+    subNama: 'Administrator ATK Mart',
     email: 'admin@atkmart.id',
     token: ApiConfig.tokenPengelolaStatis,
     role: 'pengelola',
     deskripsi: 'Akses penuh untuk konfirmasi stok, verifikasi pembayaran/COD, dan kelola katalog produk.',
     icon: Icons.admin_panel_settings_rounded,
-    color: Color(0xFFA85D00),
+    color: Color(0xFFD97706),
   );
 
   static const List<DemoAccount> buyers = [pembeli1, pembeli2];
@@ -101,12 +121,18 @@ class SessionPengguna {
     _currentAccount = account;
     ApiConfig.setDemoSession(token: account.token, role: account.role);
     AlamatTersimpan.reset();
+    if (account.role == 'pembeli') {
+      StateKeranjang.refresh();
+    } else {
+      StateKeranjang.reset();
+    }
   }
 
   static void logout() {
     _currentAccount = null;
     ApiConfig.clearDemoSession();
     AlamatTersimpan.reset();
+    StateKeranjang.reset();
   }
 }
 
@@ -141,7 +167,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F8FF),
+      backgroundColor: const Color(0xFFF1F5F9),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
@@ -155,11 +181,11 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF011C6B),
+                    color: const Color(0xFF172554),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF011C6B).withValues(alpha: 0.3),
+                        color: const Color(0xFF172554).withValues(alpha: 0.25),
                         blurRadius: 14,
                         offset: const Offset(0, 5),
                       ),
@@ -175,12 +201,12 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
               const SizedBox(height: 14),
               const Center(
                 child: Text(
-                  'ATK Mart Aoen',
+                  'ATK Mart',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.5,
-                    color: Color(0xFF182B4D),
+                    color: Color(0xFF172554),
                   ),
                 ),
               ),
@@ -192,9 +218,9 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8F0FF),
+                    color: const Color(0xFFEFF6FF),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFC5D8FF)),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
@@ -202,7 +228,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                       Icon(
                         Icons.lock_person_outlined,
                         size: 13,
-                        color: Color(0xFF011C6B),
+                        color: Color(0xFF2563EB),
                       ),
                       SizedBox(width: 5),
                       Text(
@@ -211,7 +237,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                           fontSize: 10.5,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.5,
-                          color: Color(0xFF011C6B),
+                          color: Color(0xFF2563EB),
                         ),
                       ),
                     ],
@@ -225,7 +251,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF182B4D),
+                  color: Color(0xFF172554),
                 ),
               ),
               const SizedBox(height: 4),
@@ -234,7 +260,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12.5,
-                  color: Color(0xFF536887),
+                  color: Color(0xFF64748B),
                   height: 1.35,
                 ),
               ),
@@ -272,19 +298,19 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFD8E3F5)),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
                 child: Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFF2D6),
+                        color: const Color(0xFFFEF3C7),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(
                         Icons.admin_panel_settings_outlined,
-                        color: Color(0xFFA85D00),
+                        color: Color(0xFFD97706),
                         size: 20,
                       ),
                     ),
@@ -298,14 +324,14 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF182B4D),
+                              color: Color(0xFF172554),
                             ),
                           ),
                           Text(
                             'Kelola pesanan masuk & produk katalog',
                             style: TextStyle(
                               fontSize: 11,
-                              color: Color(0xFF536887),
+                              color: Color(0xFF64748B),
                             ),
                           ),
                         ],
@@ -313,7 +339,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                     ),
                     TextButton(
                       style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFFA85D00),
+                        foregroundColor: const Color(0xFFD97706),
                         visualDensity: VisualDensity.compact,
                       ),
                       onPressed: () => _pilihAkun(DemoAccount.pengelola),
@@ -334,7 +360,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEFF4FD),
+                  color: const Color(0xFFF3F4F6),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Row(
@@ -343,7 +369,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                     Icon(
                       Icons.info_outline,
                       size: 15,
-                      color: Color(0xFF536887),
+                      color: Color(0xFF6B7280),
                     ),
                     SizedBox(width: 8),
                     Expanded(
@@ -351,7 +377,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                         'Mode demo menggunakan header Bearer Token statis sesuai aturan backend Laravel. Data tetap terisolasi di sisi server.',
                         style: TextStyle(
                           fontSize: 11,
-                          color: Color(0xFF536887),
+                          color: Color(0xFF6B7280),
                           height: 1.35,
                         ),
                       ),
@@ -419,7 +445,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                                 style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w800,
-                                  color: Color(0xFF182B4D),
+                                  color: Color(0xFF172554),
                                 ),
                               ),
                               const SizedBox(width: 6),
@@ -448,7 +474,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                             account.subNama,
                             style: const TextStyle(
                               fontSize: 11.5,
-                              color: Color(0xFF536887),
+                              color: Color(0xFF64748B),
                             ),
                           ),
                         ],
@@ -464,16 +490,16 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                     vertical: 5,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFFFFF),
+                    color: const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFD8E3F5)),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
                   ),
                   child: Row(
                     children: [
                       const Icon(
                         Icons.key_rounded,
                         size: 13,
-                        color: Color(0xFF8793A5),
+                        color: Color(0xFF94A3B8),
                       ),
                       const SizedBox(width: 6),
                       Expanded(
@@ -482,7 +508,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                           style: const TextStyle(
                             fontFamily: 'monospace',
                             fontSize: 11,
-                            color: Color(0xFF536887),
+                            color: Color(0xFF475569),
                             fontWeight: FontWeight.w600,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -510,7 +536,7 @@ class _LoginDemoPageState extends State<LoginDemoPage> {
                             pt,
                             style: const TextStyle(
                               fontSize: 11.5,
-                              color: Color(0xFF536887),
+                              color: Color(0xFF64748B),
                             ),
                           ),
                         ),
@@ -566,15 +592,34 @@ class AtkMartApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ATK Mart Aoen',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      home: SessionPengguna.isLoggedIn
-          ? (SessionPengguna.isPengelola
-                ? const AdminDashboardPage()
-                : const PembeliShellPage())
-          : const LoginDemoPage(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: AdminPreferences.themeMode,
+      builder: (context, themeMode, _) => MaterialApp(
+        title: 'ATK Mart',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        darkTheme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF60A5FA),
+            brightness: Brightness.dark,
+          ),
+          useMaterial3: true,
+          scaffoldBackgroundColor: const Color(0xFF0F172A),
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Color(0xFF111827),
+            foregroundColor: Colors.white,
+            elevation: 0,
+            centerTitle: false,
+            iconTheme: IconThemeData(color: Colors.white),
+          ),
+        ),
+        themeMode: themeMode,
+        home: SessionPengguna.isLoggedIn
+            ? (SessionPengguna.isPengelola
+                  ? const AdminDashboardPage()
+                  : const PembeliShellPage())
+            : const LoginDemoPage(),
+      ),
     );
   }
 }
@@ -627,6 +672,20 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     }
   }
 
+  Future<void> _openAdminSettings(DemoAccount account) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AdminProfileSettingsPage(
+          initialName: account.nama,
+          email: account.email,
+          onLogout: () => _confirmLogout(context),
+        ),
+      ),
+    );
+    if (mounted) setState(() {});
+  }
+
   void _confirmLogout(BuildContext context) {
     showDialog<bool>(
       context: context,
@@ -642,7 +701,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFB42318),
+              backgroundColor: const Color(0xFFE14B4B),
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx, true),
@@ -665,9 +724,10 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   @override
   Widget build(BuildContext context) {
     final account = SessionPengguna.currentAccount ?? DemoAccount.pengelola;
+    final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F8FF),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text(
           'Dashboard Pengelola',
@@ -682,6 +742,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               setState(() => _isLoading = true);
               _fetchStats();
             },
+          ),
+          IconButton(
+            icon: const Icon(Icons.manage_accounts_outlined),
+            tooltip: 'Profil & Pengaturan',
+            onPressed: () => _openAdminSettings(account),
           ),
           IconButton(
             icon: const Icon(Icons.logout),
@@ -699,12 +764,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFD8E3F5), width: 0.8),
+                border: Border.all(color: colors.outlineVariant, width: 0.8),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
+                    color: const Color(0xFF172554).withValues(alpha: 0.04),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -714,11 +779,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 children: [
                   CircleAvatar(
                     radius: 24,
-                    backgroundColor: const Color(0xFFFFF2D6),
+                    backgroundColor: const Color(0xFFFEF3C7),
                     child: const Icon(
                       Icons.admin_panel_settings_rounded,
                       size: 28,
-                      color: Color(0xFFA85D00),
+                      color: Color(0xFFD97706),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -729,11 +794,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                         Row(
                           children: [
                             Text(
-                              account.nama,
-                              style: const TextStyle(
+                              AdminPreferences.profileName ?? account.nama,
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
-                                color: Color(0xFF182B4D),
+                                color: colors.onSurface,
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -743,7 +808,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFFF2D6),
+                                color: const Color(0xFFFEF3C7),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: const Text(
@@ -751,7 +816,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFFA85D00),
+                                  color: Color(0xFFD97706),
                                 ),
                               ),
                             ),
@@ -760,9 +825,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                         const SizedBox(height: 3),
                         Text(
                           account.subNama,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: Color(0xFF66758A),
+                            color: colors.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -770,12 +835,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                   ),
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFFB42318),
+                      foregroundColor: const Color(0xFFDC2626),
                       side: const BorderSide(
-                        color: Color(0xFFF2B8B5),
+                        color: Color(0xFFFECACA),
                         width: 1,
                       ),
-                      backgroundColor: const Color(0xFFFDE8E7),
+                      backgroundColor: const Color(0xFFFEF2F2),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
                         vertical: 6,
@@ -805,13 +870,13 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF182B4D),
+                color: Color(0xFF172554),
               ),
             ),
             const SizedBox(height: 6),
             const Text(
               'Kelola katalog barang dan pantau seluruh transaksi pesanan masuk.',
-              style: TextStyle(fontSize: 13, color: Color(0xFF536887)),
+              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
             ),
             const SizedBox(height: 18),
 
@@ -821,7 +886,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               title: 'Kelola Produk',
               subtitle: 'Tambah produk baru, ubah harga satuan & grosir, sesuaikan stok ATK, dan konfigurasi ketersediaan pre-order.',
               icon: Icons.inventory_2_rounded,
-              color: const Color(0xFFA85D00),
+              color: const Color(0xFFD97706),
               countLabel: _isLoading ? null : '$_countProduk Produk Terdaftar',
               onTap: () {
                 Navigator.push(
@@ -838,7 +903,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               title: 'Kelola Pesanan',
               subtitle: 'Konfirmasi stok pre-order, verifikasi pembayaran/COD, dan perbarui tahapan proses pesanan masuk.',
               icon: Icons.assignment_rounded,
-              color: const Color(0xFF011C6B),
+              color: const Color(0xFF2563EB),
               countLabel: _isLoading
                   ? null
                   : '$_countPesananMasuk Pesanan Masuk',
@@ -851,13 +916,24 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             ),
             const SizedBox(height: 24),
 
+            _buildAdminMenuCard(
+              context,
+              title: 'Profil & Pengaturan',
+              subtitle:
+                  'Kelola profil admin, tema, notifikasi, dan informasi akun.',
+              icon: Icons.manage_accounts_rounded,
+              color: const Color(0xFF0F766E),
+              onTap: () => _openAdminSettings(account),
+            ),
+            const SizedBox(height: 24),
+
             // Info Box Admin
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFEAF1FF),
+                color: const Color(0xFFEFF6FF),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFC5D8FF)),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
               ),
               child: const Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -865,7 +941,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                   Icon(
                     Icons.shield_outlined,
                     size: 18,
-                    color: Color(0xFF011C6B),
+                    color: Color(0xFF1D4ED8),
                   ),
                   SizedBox(width: 10),
                   Expanded(
@@ -873,7 +949,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                       'Mode Pengelola: Akses administratif menggunakan token pengelola. Seluruh aksi konfirmasi pembayaran dan perubahan stok langsung tersinkronisasi ke server Laravel.',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Color(0xFF46648F),
+                        color: Color(0xFF1E40AF),
                         height: 1.4,
                       ),
                     ),
@@ -896,14 +972,15 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     String? countLabel,
     required VoidCallback onTap,
   }) {
+    final colors = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD8E3F5), width: 1),
+        border: Border.all(color: colors.outlineVariant, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: const Color(0xFF172554).withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -941,14 +1018,13 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF182B4D),
                               ),
                             ),
                           ),
-                          Icon(
+                          const Icon(
                             Icons.arrow_forward_ios_rounded,
                             size: 16,
-                            color: Colors.grey.shade400,
+                            color: Color(0xFF94A3B8),
                           ),
                         ],
                       ),
@@ -966,11 +1042,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                       const SizedBox(height: 6),
                       Text(
                         subtitle,
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          color: Color(0xFF536887),
-                          height: 1.35,
-                        ),
+                        style: const TextStyle(fontSize: 12.5, height: 1.35),
                       ),
                     ],
                   ),
@@ -1049,7 +1121,7 @@ String formatAppErrorMessage(Object error) {
       str.contains('Failed host lookup') ||
       str.contains('ClientException') ||
       str.contains('Connection refused')) {
-    return 'Gagal terhubung ke server ATK Mart Aoen.\nPastikan backend Laravel berjalan di http://127.0.0.1:8000.';
+    return 'Gagal terhubung ke server ATK Mart.\nPastikan backend Laravel berjalan di http://127.0.0.1:8000.';
   }
   if (str.contains('RequestTimeoutException') ||
       str.contains('TimeoutException') ||
@@ -1117,9 +1189,11 @@ String? resolveImageUrl(String? rawUrl) {
 
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
       final imgUri = Uri.parse(trimmed);
-      final isBackendPath = imgUri.path.contains('/api/produk/') ||
+      final isBackendPath =
+          imgUri.path.contains('/api/produk/') ||
           imgUri.path.startsWith('/storage/');
-      final isLocalOrPrivate = imgUri.host == 'localhost' ||
+      final isLocalOrPrivate =
+          imgUri.host == 'localhost' ||
           imgUri.host == '127.0.0.1' ||
           imgUri.host == '10.0.2.2' ||
           imgUri.host.startsWith('192.168.') ||
@@ -1155,6 +1229,7 @@ class ProdukImageWidget extends StatelessWidget {
   final BorderRadius? borderRadius;
   final BoxFit fit;
   final IconData placeholderIcon;
+  final String? heroTag;
 
   const ProdukImageWidget({
     super.key,
@@ -1164,6 +1239,7 @@ class ProdukImageWidget extends StatelessWidget {
     this.borderRadius,
     this.fit = BoxFit.cover,
     this.placeholderIcon = Icons.inventory_2_outlined,
+    this.heroTag,
   });
 
   @override
@@ -1189,50 +1265,283 @@ class ProdukImageWidget extends StatelessWidget {
       );
     }
 
+    Widget content;
     if (resolved == null || resolved.isEmpty) {
-      return placeholder();
+      content = placeholder();
+    } else {
+      content = ValueListenableBuilder<int>(
+        valueListenable: produkUpdateNotifier,
+        builder: (context, tick, _) {
+          final cacheKey = tick > 0 ? '$resolved?v=$tick' : resolved;
+          return ClipRRect(
+            borderRadius: radius,
+            child: Image.network(
+              cacheKey,
+              key: ValueKey(cacheKey),
+              width: width,
+              height: height,
+              fit: fit,
+              frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                if (wasSynchronouslyLoaded) return child;
+                return AnimatedOpacity(
+                  opacity: frame == null ? 0 : 1,
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOut,
+                  child: child,
+                );
+              },
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return placeholder();
+              },
+              errorBuilder: (context, error, stackTrace) => placeholder(),
+            ),
+          );
+        },
+      );
     }
 
-    return ValueListenableBuilder<int>(
-      valueListenable: produkUpdateNotifier,
-      builder: (context, tick, _) {
-        final cacheKey = tick > 0 ? '$resolved?v=$tick' : resolved;
-        return ClipRRect(
-          borderRadius: radius,
-          child: Image.network(
-            cacheKey,
-            key: ValueKey(cacheKey),
-            width: width,
-            height: height,
-            fit: fit,
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Container(
-                width: width,
-                height: height,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF4F5F7),
-                  borderRadius: radius,
+    if (heroTag != null && !MotionConstants.animationsDisabled(context)) {
+      return Hero(
+        tag: heroTag!,
+        child: Material(color: Colors.transparent, child: content),
+      );
+    }
+
+    return content;
+  }
+}
+
+class ProductCard extends StatelessWidget {
+  final Product product;
+  final VoidCallback onAdd;
+  final VoidCallback? onTap;
+  final bool isAdded;
+  final int? originalPrice;
+
+  const ProductCard({
+    required this.product,
+    required this.onAdd,
+    this.onTap,
+    this.isAdded = false,
+    this.originalPrice,
+    super.key,
+  });
+
+  bool get _canBuy =>
+      product.tersedia && (product.preOrder || product.stok > 0);
+
+  @override
+  Widget build(BuildContext context) {
+    final isDiscounted =
+        originalPrice != null && originalPrice! > product.harga;
+    final isLowStock =
+        product.tersedia &&
+        !product.preOrder &&
+        product.stok > 0 &&
+        product.stok <= 3;
+
+    return Card(
+      color: Colors.white,
+      elevation: 2,
+      shadowColor: Colors.grey[200],
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AspectRatio(
+                aspectRatio: 1,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ProdukImageWidget(
+                      imageUrl: product.gambar,
+                      borderRadius: BorderRadius.circular(8),
+                      heroTag: 'product-img-${product.id}',
+                    ),
+                    if (isLowStock || !_canBuy)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: _ProductStatusBadge(
+                          label: !_canBuy
+                              ? (product.tersedia
+                                    ? 'Stok Habis'
+                                    : 'Tidak Tersedia')
+                              : 'Sisa ${product.stok}',
+                          color: const Color(0xFFEF4444),
+                        ),
+                      )
+                    else if (product.preOrder)
+                      const Positioned(
+                        top: 8,
+                        left: 8,
+                        child: _ProductStatusBadge(
+                          label: 'Pre-Order',
+                          color: Color(0xFFD97706),
+                        ),
+                      ),
+                  ],
                 ),
-                alignment: Alignment.center,
-                child: const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                product.kategori,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF64748B),
                 ),
-              );
-            },
-            errorBuilder: (context, error, stackTrace) => placeholder(),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                product.nama,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14,
+                  height: 1.25,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF172554),
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (isDiscounted)
+                Text(
+                  _formatRupiah(originalPrice!),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF94A3B8),
+                    decoration: TextDecoration.lineThrough,
+                  ),
+                ),
+              Text(
+                _formatRupiah(product.harga),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 19,
+                  height: 1.15,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF172554),
+                ),
+              ),
+              if (product.hargaGrosir.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  _wholesalePriceLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF2563EB),
+                  ),
+                ),
+              ],
+              const Spacer(),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton(
+                  onPressed: _canBuy ? onAdd : null,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: isAdded
+                        ? const Color(0xFF059669)
+                        : const Color(0xFF172554),
+                    disabledBackgroundColor: const Color(0xFFE2E8F0),
+                    foregroundColor: Colors.white,
+                    disabledForegroundColor: const Color(0xFF64748B),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _canBuy
+                            ? (isAdded
+                                  ? Icons.check_rounded
+                                  : Icons.add_shopping_cart_rounded)
+                            : Icons.remove_shopping_cart_outlined,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          _canBuy ? 'Tambah ke Keranjang' : 'Stok Habis',
+                          maxLines: 2,
+                          textAlign: TextAlign.center,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            height: 1.1,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
+    );
+  }
+
+  String get _wholesalePriceLabel {
+    final tier = product.hargaGrosir.reduce(
+      (a, b) => a.minKuantitas < b.minKuantitas ? a : b,
+    );
+    return 'Grosir mulai ${tier.minKuantitas} pcs';
+  }
+}
+
+class _ProductStatusBadge extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _ProductStatusBadge({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+      ),
     );
   }
 }
 
 // ---------------------------------------------------------------------------
 // Shell Navigasi Pembeli (PembeliShellPage)
-// Menyatukan Katalog, Pesanan Saya, Riwayat, dan Keranjang dalam bottom bar.
+// Menyatukan Katalog, Pesanan Saya, dan Riwayat dalam bottom bar.
+// Akses keranjang tersedia melalui ikon di AppBar tiap halaman.
 // ---------------------------------------------------------------------------
 class PembeliShellPage extends StatefulWidget {
   const PembeliShellPage({super.key});
@@ -1244,7 +1553,13 @@ class PembeliShellPage extends StatefulWidget {
 class _PembeliShellPageState extends State<PembeliShellPage> {
   int _currentIndex = 0;
   final Set<int> _visited = {0};
-  final List<int> _refreshTicks = [0, 0, 0, 0];
+  final List<int> _refreshTicks = [0, 0, 0];
+
+  @override
+  void initState() {
+    super.initState();
+    StateKeranjang.refresh();
+  }
 
   void _onDestinationSelected(int index) {
     setState(() {
@@ -1269,8 +1584,6 @@ class _PembeliShellPageState extends State<PembeliShellPage> {
         return PesananSayaPage(key: key, embedded: true);
       case 2:
         return RiwayatPesananPage(key: key, embedded: true);
-      case 3:
-        return KeranjangPage(key: key, embedded: true);
       default:
         return const SizedBox.shrink();
     }
@@ -1281,9 +1594,14 @@ class _PembeliShellPageState extends State<PembeliShellPage> {
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
-        children: List.generate(4, _buildTab),
+        children: List.generate(3, _buildTab),
       ),
       bottomNavigationBar: NavigationBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: const Color(0xFF172554).withValues(alpha: 0.08),
+        elevation: 8,
+        indicatorColor: const Color(0xFF2563EB).withValues(alpha: 0.12),
         selectedIndex: _currentIndex,
         onDestinationSelected: _onDestinationSelected,
         destinations: const [
@@ -1301,11 +1619,6 @@ class _PembeliShellPageState extends State<PembeliShellPage> {
             icon: Icon(Icons.history_rounded),
             selectedIcon: Icon(Icons.history),
             label: 'Riwayat',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.shopping_cart_outlined),
-            selectedIcon: Icon(Icons.shopping_cart),
-            label: 'Keranjang',
           ),
         ],
       ),
@@ -1326,6 +1639,15 @@ class ProdukListPage extends StatefulWidget {
 class _ProdukListPageState extends State<ProdukListPage> {
   final LayananApi _api = LayananApi();
   late Future<List<Product>> _futureProduk;
+  final ScrollController _produkScrollController = ScrollController();
+  final List<Product> _produkHalamanBerikutnya = <Product>[];
+  final Set<String> _halamanDiminta = <String>{};
+  int _currentPage = 0;
+  int _lastPage = 1;
+  int _queryVersion = 0;
+  bool _hasMorePages = false;
+  bool _isLoadingMore = false;
+  Object? _loadMoreError;
 
   final TextEditingController _searchController = TextEditingController();
   String _selectedKategori = 'Semua';
@@ -1343,29 +1665,222 @@ class _ProdukListPageState extends State<ProdukListPage> {
     'Harga Termahal',
   ];
 
+  final Set<int> _animatingAddedProductIds = <int>{};
+  bool _isReloading = false;
+
+  Future<void> _handleReload() async {
+    if (_isReloading) return;
+    setState(() => _isReloading = true);
+    _reload();
+    await Future.delayed(const Duration(milliseconds: 350));
+    if (mounted) {
+      setState(() => _isReloading = false);
+    }
+  }
+
+  Future<void> _beliProduk(Product p) async {
+    final bool canBuy = p.tersedia && (p.preOrder || p.stok > 0);
+    if (!canBuy) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            !p.tersedia
+                ? 'Produk "${p.nama}" saat ini tidak tersedia.'
+                : 'Stok "${p.nama}" sudah habis.',
+          ),
+          backgroundColor: const Color(0xFFE14B4B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    HapticFeedback.selectionClick();
+
+    setState(() {
+      _animatingAddedProductIds.add(p.id);
+    });
+
+    try {
+      await _api.addKeranjang(produkId: p.id, jumlah: 1);
+      StateKeranjang.increment(1);
+      StateKeranjang.lastAddedProdukId = p.id;
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          persist: false,
+          content: Row(
+            children: [
+              const Icon(
+                Icons.check_circle_rounded,
+                color: Color(0xFF34D399),
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '${p.nama} ditambahkan ke keranjang',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: Colors.white,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF1E293B),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          duration: const Duration(seconds: 3),
+          action: SnackBarAction(
+            label: 'Lihat',
+            textColor: const Color(0xFF60A5FA),
+            onPressed: () {
+              AppNav.push(context, const KeranjangPage());
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(formatAppErrorMessage(e)),
+          backgroundColor: const Color(0xFFE14B4B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      await Future.delayed(MotionConstants.cartSuccess);
+      if (mounted) {
+        setState(() {
+          _animatingAddedProductIds.remove(p.id);
+        });
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    _produkScrollController.addListener(_onProdukScroll);
     _futureProduk = _fetchData();
     produkUpdateNotifier.addListener(_reload);
   }
 
   @override
   void dispose() {
+    _queryVersion++;
     produkUpdateNotifier.removeListener(_reload);
     _searchController.dispose();
+    _produkScrollController
+      ..removeListener(_onProdukScroll)
+      ..dispose();
     super.dispose();
   }
 
   /// Memanggil API server-side dengan query 'cari' dan filter 'kategori'
   Future<List<Product>> _fetchData() {
+    final requestVersion = ++_queryVersion;
+    _produkHalamanBerikutnya.clear();
+    _halamanDiminta.clear();
+    _currentPage = 0;
+    _lastPage = 1;
+    _hasMorePages = false;
+    _isLoadingMore = false;
+    _loadMoreError = null;
+
     final query = _searchController.text.trim();
     final cariParam = query.isNotEmpty ? query : null;
     final kategoriParam = _selectedKategori != 'Semua'
         ? _selectedKategori
         : null;
 
-    return _api.fetchProduk(cari: cariParam, kategori: kategoriParam);
+    return _api
+        .fetchProdukPaginated(
+          page: 1,
+          perPage: 10,
+          cari: cariParam,
+          kategori: kategoriParam,
+        )
+        .then((result) {
+          if (requestVersion == _queryVersion) {
+            _currentPage = result.currentPage;
+            _lastPage = result.lastPage;
+            _hasMorePages = result.hasMorePages;
+          }
+          return result.products;
+        });
+  }
+
+  void _onProdukScroll() {
+    if (_produkScrollController.hasClients &&
+        _produkScrollController.position.extentAfter < 300) {
+      _loadNextProdukPage();
+    }
+  }
+
+  Future<void> _loadNextProdukPage() async {
+    if (_isLoadingMore || !_hasMorePages || _currentPage >= _lastPage) {
+      return;
+    }
+
+    final requestVersion = _queryVersion;
+    final page = _currentPage + 1;
+    final requestKey = '$requestVersion:$page';
+    if (!_halamanDiminta.add(requestKey)) return;
+
+    final query = _searchController.text.trim();
+    final cariParam = query.isNotEmpty ? query : null;
+    final kategoriParam = _selectedKategori != 'Semua'
+        ? _selectedKategori
+        : null;
+    setState(() {
+      _isLoadingMore = true;
+      _loadMoreError = null;
+    });
+
+    try {
+      final result = await _api.fetchProdukPaginated(
+        page: page,
+        perPage: 10,
+        cari: cariParam,
+        kategori: kategoriParam,
+      );
+      if (!mounted || requestVersion != _queryVersion) return;
+
+      setState(() {
+        _produkHalamanBerikutnya.addAll(result.products);
+        _currentPage = result.currentPage;
+        _lastPage = result.lastPage;
+        _hasMorePages = result.hasMorePages;
+      });
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted &&
+            _produkScrollController.hasClients &&
+            _produkScrollController.position.extentAfter < 300) {
+          _loadNextProdukPage();
+        }
+      });
+    } catch (error) {
+      if (!mounted || requestVersion != _queryVersion) return;
+      setState(() => _loadMoreError = error);
+    } finally {
+      _halamanDiminta.remove(requestKey);
+      if (mounted && requestVersion == _queryVersion) {
+        setState(() => _isLoadingMore = false);
+      }
+    }
   }
 
   void _onSearchOrFilterChanged() {
@@ -1375,8 +1890,6 @@ class _ProdukListPageState extends State<ProdukListPage> {
   }
 
   void _reload() {
-    PaintingBinding.instance.imageCache.clear();
-    PaintingBinding.instance.imageCache.clearLiveImages();
     if (mounted) {
       setState(() {
         _futureProduk = _fetchData();
@@ -1386,177 +1899,43 @@ class _ProdukListPageState extends State<ProdukListPage> {
 
   String _formatErrorMessage(Object error) => formatAppErrorMessage(error);
 
-  Widget _buildStatusBadge(Product p) {
-    if (!p.tersedia) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          'Tidak Tersedia',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey.shade700,
-          ),
-        ),
-      );
-    }
-    if (p.preOrder) {
-      final estimasi =
-          (p.estimasiTersedia != null && p.estimasiTersedia!.isNotEmpty)
-          ? ' · Tiba: ${p.estimasiTersedia}'
-          : '';
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFF2D6),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: const Color(0xFFA85D00), width: 0.8),
-        ),
-        child: Text(
-          'Pre-Order$estimasi',
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFFA85D00),
-          ),
-        ),
-      );
-    }
-    if (p.stok == 0) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFDE8E7),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: const Color(0xFFB42318), width: 0.8),
-        ),
-        child: const Text(
-          'Stok Habis',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFFB42318),
-          ),
-        ),
-      );
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE7F6ED),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        'Stok: ${p.stok}',
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF16754B),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGrosirPill(Product p) {
-    if (p.hargaGrosir.isEmpty) return const SizedBox.shrink();
-    final minTier = p.hargaGrosir.reduce(
-      (a, b) => a.minKuantitas < b.minKuantitas ? a : b,
-    );
-    return Container(
-      margin: const EdgeInsets.only(top: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE8F0FF),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: const Color(0xFFC5D8FF), width: 0.8),
-      ),
-      child: Text(
-        'Grosir: ≥${minTier.minKuantitas} pcs @${_formatRupiah(minTier.hargaSatuan)}',
-        style: const TextStyle(
-          fontSize: 11,
-          color: Color(0xFF011C6B),
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButton(Product p) {
-    final bool canBuy = p.tersedia && (p.preOrder || p.stok > 0);
-
-    if (!canBuy) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade300),
-        ),
-        child: Text(
-          !p.tersedia ? 'Tidak Tersedia' : 'Stok Habis',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey.shade500,
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: p.preOrder ? const Color(0xFFA85D00) : const Color(0xFF182B4D),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            p.preOrder ? Icons.schedule : Icons.add_shopping_cart,
-            size: 14,
-            color: Colors.white,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            p.preOrder ? 'Pre-Order' : 'Beli',
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _confirmLogout(BuildContext context) {
     final account = SessionPengguna.currentAccount;
     showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Keluar dari Akun Demo'),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Konfirmasi Ganti Akun',
+          style: TextStyle(
+            color: Color(0xFF172554),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         content: Text(
           'Anda sedang menggunakan ${account?.nama ?? "akun demo"}.\n\n'
           'Keluar untuk berganti ke akun lain? Token akun sebelumnya tidak akan digunakan lagi.',
+          style: const TextStyle(color: Color(0xFF64748B)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
+            child: const Text(
+              'Batal',
+              style: TextStyle(color: Color(0xFF64748B)),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFB42318),
+              backgroundColor: const Color(0xFFE14B4B),
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Keluar'),
+            child: const Text('Ya, ganti'),
           ),
         ],
       ),
@@ -1572,181 +1951,333 @@ class _ProdukListPageState extends State<ProdukListPage> {
     });
   }
 
+  void _showAccountDetailBottomSheet(
+    BuildContext context,
+    DemoAccount account,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Indikator drag handle
+                Container(
+                  width: 38,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 18),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCBD5E1),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // Avatar Akun
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: account.color.withValues(alpha: 0.12),
+                  child: Icon(account.icon, size: 32, color: account.color),
+                ),
+                const SizedBox(height: 12),
+                // Nama Akun dan Badge Peran
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        account.nama,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF172554),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: account.color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: account.color.withValues(alpha: 0.25),
+                        ),
+                      ),
+                      child: Text(
+                        account.role.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.bold,
+                          color: account.color,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                // Informasi Detail Pelanggan (Tanpa Token)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    children: [
+                      // Nama Pelanggan
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: account.color.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.person_outline_rounded,
+                              size: 18,
+                              color: account.color,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Nama Pelanggan',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Color(0xFF64748B),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  account.namaPelanggan,
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF172554),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Divider(
+                          height: 1,
+                          thickness: 0.8,
+                          color: Color(0xFFE2E8F0),
+                        ),
+                      ),
+                      // ID Pelanggan
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: account.color.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.tag_rounded,
+                              size: 18,
+                              color: account.color,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'ID Pelanggan',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Color(0xFF64748B),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  account.idPelanggan,
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF172554),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                // Tombol Ganti Akun (Area sentuh minimal 48 dp)
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFFF5F5),
+                      foregroundColor: const Color(0xFFE14B4B),
+                      elevation: 0,
+                      side: const BorderSide(
+                        color: Color(0xFFFFCCCC),
+                        width: 1,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    icon: const Icon(Icons.logout, size: 18),
+                    label: const Text(
+                      'Ganti Akun',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    onPressed: () => _confirmLogout(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildUserIdentityBanner(BuildContext context) {
     final account = SessionPengguna.currentAccount;
     if (account == null) return const SizedBox.shrink();
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 10, 16, 2),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD8E3F5), width: 0.8),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 0.8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 4,
+            color: const Color(0xFF172554).withValues(alpha: 0.04),
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 17,
-                backgroundColor: account.color.withValues(alpha: 0.12),
-                child: Icon(account.icon, size: 20, color: account.color),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          account.nama,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                            color: Color(0xFF182B4D),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: account.color.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            account.role.toUpperCase(),
-                            style: TextStyle(
-                              fontSize: 9.5,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _showAccountDetailBottomSheet(context, account),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 17,
+                  backgroundColor: account.color.withValues(alpha: 0.12),
+                  child: Icon(account.icon, size: 20, color: account.color),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            account.nama,
+                            style: const TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: account.color,
+                              fontSize: 13,
+                              color: Color(0xFF172554),
                             ),
                           ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: account.color.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              account.role.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.bold,
+                                color: account.color,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        account.subNama,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF64748B),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      account.subNama,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF66758A),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFB42318),
-                  side: const BorderSide(color: Color(0xFFF2B8B5), width: 1),
-                  backgroundColor: const Color(0xFFFDE8E7),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  minimumSize: const Size(0, 30),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    ],
                   ),
                 ),
-                icon: const Icon(Icons.logout, size: 13),
-                label: const Text(
-                  'Ganti Akun',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                ),
-                onPressed: () => _confirmLogout(context),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Pintasan Cepat Pesanan Pembeli (Pesanan Aktif & Riwayat Selesai)
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
+                OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF011C6B),
-                    side: const BorderSide(color: Color(0xFFC5D8FF)),
-                    backgroundColor: const Color(0xFFE8F0FF),
+                    foregroundColor: const Color(0xFFE14B4B),
+                    side: const BorderSide(color: Color(0xFFFFCCCC), width: 1),
+                    backgroundColor: const Color(0xFFFFF5F5),
                     padding: const EdgeInsets.symmetric(
-                      vertical: 5,
-                      horizontal: 8,
+                      horizontal: 10,
+                      vertical: 4,
                     ),
-                    minimumSize: const Size(0, 32),
+                    minimumSize: const Size(0, 30),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  icon: const Icon(Icons.local_shipping_outlined, size: 15),
+                  icon: const Icon(Icons.logout, size: 13),
                   label: const Text(
-                    'Pesanan Saya',
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    'Ganti Akun',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                   ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const PesananSayaPage(),
-                      ),
-                    );
-                  },
+                  onPressed: () => _confirmLogout(context),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF16754B),
-                    side: const BorderSide(color: Color(0xFFB7DEC7)),
-                    backgroundColor: const Color(0xFFE7F6ED),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 5,
-                      horizontal: 8,
-                    ),
-                    minimumSize: const Size(0, 32),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  icon: const Icon(Icons.history_rounded, size: 15),
-                  label: const Text(
-                    'Riwayat Selesai',
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const RiwayatPesananPage(),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1756,11 +2287,18 @@ class _ProdukListPageState extends State<ProdukListPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Katalog ATK Mart Aoen',
+          'Katalog ATK Mart',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: false,
         actions: [
+          IconButton(
+            icon: const AnimatedCartBadgeIcon(),
+            tooltip: 'Keranjang',
+            onPressed: () {
+              AppNav.push(context, const KeranjangPage());
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Segarkan',
@@ -1785,13 +2323,21 @@ class _ProdukListPageState extends State<ProdukListPage> {
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Cari alat tulis, buku, pulpen...',
-                prefixIcon: const Icon(Icons.search),
+                hintStyle: const TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 13,
+                ),
+                prefixIcon: const Icon(Icons.search, color: Color(0xFF64748B)),
                 suffixIcon: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (_searchController.text.isNotEmpty)
                       IconButton(
-                        icon: const Icon(Icons.clear, size: 20),
+                        icon: const Icon(
+                          Icons.clear,
+                          size: 20,
+                          color: Color(0xFF64748B),
+                        ),
                         tooltip: 'Hapus teks',
                         onPressed: () {
                           _searchController.clear();
@@ -1799,7 +2345,11 @@ class _ProdukListPageState extends State<ProdukListPage> {
                         },
                       ),
                     IconButton(
-                      icon: const Icon(Icons.arrow_forward, size: 20),
+                      icon: const Icon(
+                        Icons.arrow_forward,
+                        size: 20,
+                        color: Color(0xFF2563EB),
+                      ),
                       tooltip: 'Cari',
                       onPressed: _onSearchOrFilterChanged,
                     ),
@@ -1813,16 +2363,16 @@ class _ProdukListPageState extends State<ProdukListPage> {
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFD8E3F5)),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFD8E3F5)),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(
-                    color: Color(0xFF011C6B),
+                    color: Color(0xFF2563EB),
                     width: 1.5,
                   ),
                 ),
@@ -1834,7 +2384,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
 
           // 2. Filter Kategori Horisontal (Server-Side)
           SizedBox(
-            height: 42,
+            height: 48,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
@@ -1843,35 +2393,61 @@ class _ProdukListPageState extends State<ProdukListPage> {
               itemBuilder: (context, i) {
                 final kat = _kategoriList[i];
                 final isSelected = _selectedKategori == kat;
-                return ChoiceChip(
-                  label: Text(kat),
-                  selected: isSelected,
-                  selectedColor: const Color(0xFF011C6B),
-                  backgroundColor: Colors.white,
-                  labelStyle: TextStyle(
-                    fontSize: 13,
-                    fontWeight: isSelected
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                    color: isSelected ? Colors.white : const Color(0xFF182B4D),
-                  ),
-                  side: BorderSide(
-                    color: isSelected
-                        ? const Color(0xFF011C6B)
-                        : const Color(0xFFD8E3F5),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  showCheckmark: false,
-                  onSelected: (selected) {
-                    if (selected && _selectedKategori != kat) {
+                return PressableScale(
+                  enableHaptic: true,
+                  onPressed: () {
+                    if (_selectedKategori != kat) {
                       setState(() {
                         _selectedKategori = kat;
                         _futureProduk = _fetchData();
                       });
                     }
                   },
+                  constraints: const BoxConstraints(minHeight: 48),
+                  child: Center(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeInOut,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? const Color(0xFF2563EB)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xFF2563EB)
+                              : const Color(0xFFE2E8F0),
+                          width: isSelected ? 1.2 : 0.8,
+                        ),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: const Color(0xFF2563EB)
+                                      .withValues(alpha: 0.22),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Text(
+                        kat,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.w500,
+                          color: isSelected
+                              ? Colors.white
+                              : const Color(0xFF64748B),
+                        ),
+                      ),
+                    ),
+                  ),
                 );
               },
             ),
@@ -1885,20 +2461,20 @@ class _ProdukListPageState extends State<ProdukListPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
+                const Row(
                   children: [
                     Icon(
                       Icons.swap_vert_rounded,
                       size: 18,
-                      color: Colors.grey.shade600,
+                      color: Color(0xFF64748B),
                     ),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     Text(
                       'Urutkan:',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Colors.grey.shade700,
+                        color: Color(0xFF64748B),
                       ),
                     ),
                   ],
@@ -1910,7 +2486,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: const Color(0xFFE6E6EC),
+                      color: const Color(0xFFE2E8F0),
                       width: 0.8,
                     ),
                   ),
@@ -1918,12 +2494,15 @@ class _ProdukListPageState extends State<ProdukListPage> {
                     child: DropdownButton<String>(
                       value: _selectedSort,
                       isDense: true,
-                      icon: const Icon(Icons.keyboard_arrow_down,
-                          size: 18, color: Color(0xFF2F6BFF)),
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down,
+                        size: 18,
+                        color: Color(0xFF2563EB),
+                      ),
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF15151A),
+                        color: Color(0xFF172554),
                       ),
                       items: _sortOptions.map((opt) {
                         return DropdownMenuItem<String>(
@@ -1953,7 +2532,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
               future: _futureProduk,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const ProductListSkeleton();
                 }
 
                 if (snapshot.hasError) {
@@ -1963,10 +2542,22 @@ class _ProdukListPageState extends State<ProdukListPage> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
-                            Icons.error_outline,
-                            size: 48,
-                            color: Color(0xFFB42318),
+                          TweenAnimationBuilder<double>(
+                            tween: Tween<double>(begin: 0.0, end: 1.0),
+                            duration: const Duration(milliseconds: 350),
+                            curve: Curves.easeOut,
+                            builder: (context, val, child) => Opacity(
+                              opacity: val,
+                              child: Transform.scale(
+                                scale: 0.85 + 0.15 * val,
+                                child: child,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.cloud_off_rounded,
+                              size: 54,
+                              color: Color(0xFFE14B4B),
+                            ),
                           ),
                           const SizedBox(height: 12),
                           Text(
@@ -1974,18 +2565,37 @@ class _ProdukListPageState extends State<ProdukListPage> {
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               fontSize: 14,
-                              color: Color(0xFF182B4D),
+                              color: Color(0xFF15151A),
                             ),
                           ),
                           const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF011C6B),
-                              foregroundColor: Colors.white,
+                          PressableScale(
+                            enableHaptic: true,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF2F6BFF),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
+                                minimumSize: const Size(120, 48),
+                              ),
+                              icon: _isReloading
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Icons.refresh, size: 18),
+                              label: Text(
+                                _isReloading ? 'Mencoba...' : 'Coba Lagi',
+                              ),
+                              onPressed: _isReloading ? null : _handleReload,
                             ),
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('Coba Lagi'),
-                            onPressed: _reload,
                           ),
                         ],
                       ),
@@ -1994,6 +2604,15 @@ class _ProdukListPageState extends State<ProdukListPage> {
                 }
 
                 final rawList = snapshot.data ?? [];
+                if (rawList.isNotEmpty) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted &&
+                        _produkScrollController.hasClients &&
+                        _produkScrollController.position.extentAfter < 300) {
+                      _loadNextProdukPage();
+                    }
+                  });
+                }
                 if (rawList.isEmpty) {
                   return Center(
                     child: Padding(
@@ -2004,7 +2623,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
                           Icon(
                             Icons.inventory_2_outlined,
                             size: 56,
-                            color: Colors.grey.shade400,
+                            color: const Color(0xFF94A3B8),
                           ),
                           const SizedBox(height: 12),
                           Text(
@@ -2013,9 +2632,9 @@ class _ProdukListPageState extends State<ProdukListPage> {
                                 ? 'Tidak ada produk yang sesuai dengan pencarian atau filter.'
                                 : 'Belum ada produk yang tersedia di katalog.',
                             textAlign: TextAlign.center,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 14,
-                              color: Colors.grey.shade700,
+                              color: Color(0xFF64748B),
                             ),
                           ),
                           if (_searchController.text.isNotEmpty ||
@@ -2023,6 +2642,12 @@ class _ProdukListPageState extends State<ProdukListPage> {
                               _selectedSort != 'Default') ...[
                             const SizedBox(height: 12),
                             OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF2563EB),
+                                side: const BorderSide(
+                                  color: Color(0xFFBFDBFE),
+                                ),
+                              ),
                               onPressed: () {
                                 _searchController.clear();
                                 setState(() {
@@ -2041,7 +2666,10 @@ class _ProdukListPageState extends State<ProdukListPage> {
                 }
 
                 // Salin list produk agar data sumber asli tidak termutasi
-                final List<Product> produkList = List<Product>.from(rawList);
+                final List<Product> produkList = [
+                  ...rawList,
+                  ..._produkHalamanBerikutnya,
+                ];
                 if (_selectedSort == 'Harga Termurah') {
                   produkList.sort((a, b) => a.harga.compareTo(b.harga));
                 } else if (_selectedSort == 'Harga Termahal') {
@@ -2049,126 +2677,68 @@ class _ProdukListPageState extends State<ProdukListPage> {
                 }
 
                 return RefreshIndicator(
+                  color: const Color(0xFF2563EB),
+                  backgroundColor: Colors.white,
                   onRefresh: () async => _reload(),
-                  child: ListView.builder(
-                    padding: const EdgeInsets.only(top: 4, bottom: 20),
-                    itemCount: produkList.length,
-                    itemBuilder: (context, index) {
-                      final produk = produkList[index];
-                      return Card(
-                        color: Colors.white,
-                        elevation: 0.8,
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 6,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final crossAxisCount = (constraints.maxWidth / 190)
+                          .floor()
+                          .clamp(2, 4);
+                      final contentWidth = constraints.maxWidth - 32;
+                      final tileWidth =
+                          (contentWidth - 12 * (crossAxisCount - 1)) /
+                          crossAxisCount;
+
+                      return GridView.builder(
+                        controller: _produkScrollController,
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: crossAxisCount,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          mainAxisExtent: tileWidth + 190,
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          side: const BorderSide(
-                            color: Color(0xFFD8E3F5),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    ProdukDetailPage(produk: produk),
+                        itemCount:
+                            produkList.length +
+                            (_isLoadingMore || _loadMoreError != null ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index >= produkList.length) {
+                            if (_loadMoreError != null) {
+                              return Center(
+                                child: TextButton.icon(
+                                  onPressed: _loadNextProdukPage,
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Coba muat lagi'),
+                                ),
+                              );
+                            }
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                color: Color(0xFF2563EB),
                               ),
                             );
-                            if (mounted) _reload();
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(14),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                ProdukImageWidget(
-                                  imageUrl: produk.gambar,
-                                  width: 84,
-                                  height: 84,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              produk.nama,
-                                              style: const TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.bold,
-                                                color: Color(0xFF15151A),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          _buildStatusBadge(produk),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        produk.kategori,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Color(0xFF8A8A93),
-                                        ),
-                                      ),
-                                      if (produk.deskripsi != null &&
-                                          produk.deskripsi!.isNotEmpty) ...[
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          produk.deskripsi!,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: Colors.grey.shade800,
-                                          ),
-                                        ),
-                                      ],
-                                      const SizedBox(height: 10),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.end,
-                                        children: [
-                                          Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                _formatRupiah(produk.harga),
-                                                style: const TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Color(0xFF15151A),
-                                                ),
-                                              ),
-                                              _buildGrosirPill(produk),
-                                            ],
-                                          ),
-                                          _buildActionButton(produk),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                          }
+
+                          final produk = produkList[index];
+                          return StaggeredListItem(
+                            index: index,
+                            child: ProductCard(
+                              product: produk,
+                              isAdded: _animatingAddedProductIds.contains(
+                                produk.id,
+                              ),
+                              onAdd: () => _beliProduk(produk),
+                              onTap: () async {
+                                await AppNav.push(
+                                  context,
+                                  ProdukDetailPage(produk: produk),
+                                );
+                                if (mounted) _reload();
+                              },
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       );
                     },
                   ),
@@ -2215,8 +2785,6 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
   }
 
   void _reload() {
-    PaintingBinding.instance.imageCache.clear();
-    PaintingBinding.instance.imageCache.clearLiveImages();
     if (mounted) {
       setState(() {
         _futureDetail = _api.fetchProdukDetail(widget.produk.id);
@@ -2247,37 +2815,47 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
       await _api.addKeranjang(produkId: product.id, jumlah: _jumlah);
 
       if (!mounted) return;
+      StateKeranjang.increment(_jumlah);
+      StateKeranjang.lastAddedProdukId = product.id;
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
+          persist: false,
           content: Row(
             children: [
               const Icon(
-                Icons.check_circle_outline,
-                color: Colors.white,
+                Icons.check_circle_rounded,
+                color: Color(0xFF34D399),
                 size: 20,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   '$_jumlah unit "${product.nama}" berhasil dimasukkan ke keranjang.',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: Colors.white,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
           action: SnackBarAction(
-            label: 'Keranjang',
-            textColor: Colors.white,
+            label: 'Lihat',
+            textColor: const Color(0xFF60A5FA),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const KeranjangPage()),
-              );
+              AppNav.push(context, const KeranjangPage());
             },
           ),
-          backgroundColor: const Color(0xFF16754B),
-          duration: const Duration(seconds: 2),
+          backgroundColor: const Color(0xFF1E293B),
+          duration: const Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         ),
       );
     } on ConflictException catch (e) {
@@ -2296,7 +2874,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
               Expanded(child: Text(formatAppErrorMessage(e))),
             ],
           ),
-          backgroundColor: const Color(0xFFB42318),
+          backgroundColor: const Color(0xFFE14B4B),
           duration: const Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
         ),
@@ -2312,7 +2890,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
           content: Text(
             errorMsg.isNotEmpty ? errorMsg : formatAppErrorMessage(e),
           ),
-          backgroundColor: const Color(0xFFB42318),
+          backgroundColor: const Color(0xFFE14B4B),
           duration: const Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
         ),
@@ -2325,7 +2903,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
           content: Text(
             'Permintaan ke server melebihi batas waktu (15 detik). Silakan coba lagi.',
           ),
-          backgroundColor: Color(0xFFB42318),
+          backgroundColor: Color(0xFFE14B4B),
           duration: Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
         ),
@@ -2336,7 +2914,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(formatAppErrorMessage(e)),
-          backgroundColor: const Color(0xFFB42318),
+          backgroundColor: const Color(0xFFE14B4B),
           duration: const Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
         ),
@@ -2347,7 +2925,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(formatAppErrorMessage(e)),
-          backgroundColor: const Color(0xFFB42318),
+          backgroundColor: const Color(0xFFE14B4B),
           duration: const Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
         ),
@@ -2371,6 +2949,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
 
     try {
       await _api.addKeranjang(produkId: product.id, jumlah: _jumlah);
+      StateKeranjang.lastAddedProdukId = product.id;
 
       final cartData = await _api.fetchKeranjang();
       final matchingItem = cartData.items.firstWhere(
@@ -2391,7 +2970,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(formatAppErrorMessage(e)),
-          backgroundColor: const Color(0xFFB42318),
+          backgroundColor: const Color(0xFFE14B4B),
           duration: const Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
         ),
@@ -2410,7 +2989,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: Colors.grey.shade200,
+          color: const Color(0xFFF1F5F9),
           borderRadius: BorderRadius.circular(8),
         ),
         child: const Text(
@@ -2418,7 +2997,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: Colors.grey,
+            color: Color(0xFF64748B),
           ),
         ),
       );
@@ -2431,16 +3010,16 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFF2D6),
+          color: const Color(0xFFFFFBEB),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFA85D00), width: 0.8),
+          border: Border.all(color: const Color(0xFFFDE68A), width: 0.8),
         ),
         child: Text(
           'Pre-Order$estimasi',
           style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: Color(0xFFA85D00),
+            color: Color(0xFFD97706),
           ),
         ),
       );
@@ -2449,16 +3028,16 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: const Color(0xFFFDE8E7),
+          color: const Color(0xFFFEF2F2),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFB42318), width: 0.8),
+          border: Border.all(color: const Color(0xFFFECACA), width: 0.8),
         ),
         child: const Text(
           'Stok Habis',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: Color(0xFFB42318),
+            color: Color(0xFFDC2626),
           ),
         ),
       );
@@ -2466,7 +3045,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: const Color(0xFFE7F6ED),
+        color: const Color(0xFFECFDF5),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
@@ -2474,7 +3053,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
         style: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: Color(0xFF16754B),
+          color: Color(0xFF059669),
         ),
       ),
     );
@@ -2486,25 +3065,25 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD8E3F5)),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: const Color(0xFF011C6B)),
+          Icon(icon, size: 20, color: const Color(0xFF2563EB)),
           const SizedBox(width: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 label,
-                style: const TextStyle(fontSize: 11, color: Color(0xFF66758A)),
+                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
               ),
               Text(
                 value,
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF182B4D),
+                  color: Color(0xFF172554),
                 ),
               ),
             ],
@@ -2521,13 +3100,10 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
         title: Text(widget.produk.nama),
         actions: [
           IconButton(
-            icon: const Icon(Icons.shopping_cart_outlined),
+            icon: const AnimatedCartBadgeIcon(),
             tooltip: 'Keranjang Belanja',
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const KeranjangPage()),
-              );
+              AppNav.push(context, const KeranjangPage());
             },
           ),
         ],
@@ -2549,7 +3125,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                     const Icon(
                       Icons.error_outline,
                       size: 48,
-                      color: Color(0xFFB42318),
+                      color: Color(0xFFE14B4B),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -2557,13 +3133,13 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 14,
-                        color: Color(0xFF182B4D),
+                        color: Color(0xFF15151A),
                       ),
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF011C6B),
+                        backgroundColor: const Color(0xFF2F6BFF),
                         foregroundColor: Colors.white,
                       ),
                       icon: const Icon(Icons.refresh),
@@ -2629,6 +3205,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                           height: 220,
                           borderRadius: BorderRadius.circular(14),
                           fit: BoxFit.cover,
+                          heroTag: 'product-img-${product.id}',
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -2642,7 +3219,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF182B4D),
+                                color: Color(0xFF172554),
                               ),
                             ),
                           ),
@@ -2660,7 +3237,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFFD8E3F5)),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2669,7 +3246,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                               'Harga Satuan Normal',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Color(0xFF66758A),
+                                color: Color(0xFF64748B),
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -2678,7 +3255,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                               style: const TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF011C6B),
+                                color: Color(0xFF2563EB),
                               ),
                             ),
                             if (isGrosirActive) ...[
@@ -2689,7 +3266,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFE8F0FF),
+                                  color: const Color(0xFFEFF6FF),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
@@ -2697,7 +3274,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                                   style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF011C6B),
+                                    color: Color(0xFF2563EB),
                                   ),
                                 ),
                               ),
@@ -2756,6 +3333,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
+                          color: Color(0xFF172554),
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -2765,7 +3343,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFD8E3F5)),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
                         ),
                         child: Text(
                           product.deskripsi != null &&
@@ -2774,7 +3352,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                               : 'Tidak ada deskripsi untuk produk ini.',
                           style: const TextStyle(
                             fontSize: 14,
-                            color: Color(0xFF182B4D),
+                            color: Color(0xFF334155),
                             height: 1.4,
                           ),
                         ),
@@ -2788,6 +3366,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
+                            color: Color(0xFF172554),
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -2796,7 +3375,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFD8E3F5)),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
                           ),
                           child: Column(
                             children: product.hargaGrosir.map((tier) {
@@ -2809,11 +3388,11 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: tierReached
-                                      ? const Color(0xFFE8F0FF)
+                                      ? const Color(0xFFEFF6FF)
                                       : Colors.transparent,
-                                  border: Border(
+                                  border: const Border(
                                     bottom: BorderSide(
-                                      color: Colors.grey.shade200,
+                                      color: Color(0xFFF1F5F9),
                                     ),
                                   ),
                                 ),
@@ -2829,8 +3408,8 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                                               : Icons.radio_button_unchecked,
                                           size: 16,
                                           color: tierReached
-                                              ? const Color(0xFF011C6B)
-                                              : Colors.grey,
+                                              ? const Color(0xFF2563EB)
+                                              : const Color(0xFF94A3B8),
                                         ),
                                         const SizedBox(width: 8),
                                         Text(
@@ -2840,7 +3419,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                                             fontWeight: tierReached
                                                 ? FontWeight.bold
                                                 : FontWeight.normal,
-                                            color: const Color(0xFF182B4D),
+                                            color: const Color(0xFF172554),
                                           ),
                                         ),
                                       ],
@@ -2851,8 +3430,8 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                                         fontSize: 13,
                                         fontWeight: FontWeight.bold,
                                         color: tierReached
-                                            ? const Color(0xFF011C6B)
-                                            : const Color(0xFF182B4D),
+                                            ? const Color(0xFF2563EB)
+                                            : const Color(0xFF172554),
                                       ),
                                     ),
                                   ],
@@ -2874,7 +3453,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                   color: Colors.white,
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0x0D000000),
+                      color: const Color(0xFF172554).withValues(alpha: 0.06),
                       blurRadius: 10,
                       offset: const Offset(0, -3),
                     ),
@@ -2892,10 +3471,10 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                           // Quantity Stepper
                           Container(
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF5F8FF),
+                              color: const Color(0xFFF1F5F9),
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
-                                color: const Color(0xFFD8E3F5),
+                                color: const Color(0xFFE2E8F0),
                               ),
                             ),
                             child: Row(
@@ -2920,6 +3499,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                                     style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.bold,
+                                      color: Color(0xFF172554),
                                     ),
                                   ),
                                 ),
@@ -2945,7 +3525,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                                 'Estimasi Subtotal',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: Color(0xFF66758A),
+                                  color: Color(0xFF64748B),
                                 ),
                               ),
                               Text(
@@ -2953,7 +3533,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF182B4D),
+                                  color: Color(0xFF2563EB),
                                 ),
                               ),
                             ],
@@ -2969,50 +3549,57 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                           Expanded(
                             child: SizedBox(
                               height: 48,
-                              child: OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: !canOrder
-                                      ? Colors.grey.shade400
-                                      : const Color(0xFF182B4D),
-                                  side: BorderSide(
-                                    color: !canOrder
-                                        ? Colors.grey.shade300
-                                        : const Color(0xFF182B4D),
-                                    width: 1.5,
+                              child: PressableScale(
+                                enabled:
+                                    canOrder &&
+                                    !_isAddingToCart &&
+                                    !_isBuyingNow,
+                                enableHaptic: true,
+                                child: OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: !canOrder
+                                        ? const Color(0xFF94A3B8)
+                                        : const Color(0xFF172554),
+                                    side: BorderSide(
+                                      color: !canOrder
+                                          ? const Color(0xFFCBD5E1)
+                                          : const Color(0xFF172554),
+                                      width: 1.5,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
                                   ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                onPressed:
-                                    (!canOrder ||
-                                        _isAddingToCart ||
-                                        _isBuyingNow)
-                                    ? null
-                                    : () => _tambahKeKeranjang(product),
-                                icon: _isAddingToCart
-                                    ? const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
+                                  onPressed:
+                                      (!canOrder ||
+                                          _isAddingToCart ||
+                                          _isBuyingNow)
+                                      ? null
+                                      : () => _tambahKeKeranjang(product),
+                                  icon: _isAddingToCart
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : Icon(
+                                          product.preOrder
+                                              ? Icons.schedule
+                                              : Icons.add_shopping_cart,
+                                          size: 18,
                                         ),
-                                      )
-                                    : Icon(
-                                        product.preOrder
-                                            ? Icons.schedule
-                                            : Icons.add_shopping_cart,
-                                        size: 18,
-                                      ),
-                                label: Text(
-                                  product.preOrder
-                                      ? 'Keranjang PO'
-                                      : 'Keranjang',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
+                                  label: Text(
+                                    product.preOrder
+                                        ? 'Keranjang PO'
+                                        : 'Keranjang',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ),
@@ -3021,46 +3608,53 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
                           Expanded(
                             child: SizedBox(
                               height: 48,
-                              child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: !canOrder
-                                      ? Colors.grey.shade400
-                                      : (product.preOrder
-                                            ? const Color(0xFFA85D00)
-                                            : const Color(0xFF011C6B)),
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                              child: PressableScale(
+                                enabled:
+                                    canOrder &&
+                                    !_isAddingToCart &&
+                                    !_isBuyingNow,
+                                enableHaptic: true,
+                                child: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: !canOrder
+                                        ? const Color(0xFF94A3B8)
+                                        : (product.preOrder
+                                              ? const Color(0xFFD97706)
+                                              : const Color(0xFF2563EB)),
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
                                   ),
-                                ),
-                                onPressed:
-                                    (!canOrder ||
-                                        _isAddingToCart ||
-                                        _isBuyingNow)
-                                    ? null
-                                    : () => _beliSekarang(product),
-                                icon: _isBuyingNow
-                                    ? const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor: AlwaysStoppedAnimation(
-                                            Colors.white,
+                                  onPressed:
+                                      (!canOrder ||
+                                          _isAddingToCart ||
+                                          _isBuyingNow)
+                                      ? null
+                                      : () => _beliSekarang(product),
+                                  icon: _isBuyingNow
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation(
+                                              Colors.white,
+                                            ),
                                           ),
-                                        ),
-                                      )
-                                    : const Icon(Icons.flash_on, size: 18),
-                                label: Text(
-                                  product.preOrder
-                                      ? 'Beli PO'
-                                      : 'Beli Sekarang',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
+                                        )
+                                      : const Icon(Icons.flash_on, size: 18),
+                                  label: Text(
+                                    product.preOrder
+                                        ? 'Beli PO'
+                                        : 'Beli Sekarang',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ),
@@ -3095,6 +3689,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
   late Future<KeranjangData> _futureKeranjang;
   bool _isProcessing = false;
   Set<int>? _selectedItemIds;
+  int? _appliedLastAddedProdukId;
 
   @override
   void initState() {
@@ -3108,12 +3703,26 @@ class _KeranjangPageState extends State<KeranjangPage> {
     });
   }
 
+  /// Menaruh produk terakhir yang ditambahkan di paling atas daftar.
+  List<CartItem> _susunItems(List<CartItem> items) {
+    final lastAdded = StateKeranjang.lastAddedProdukId;
+    if (lastAdded == null) return items;
+    final sorted = List<CartItem>.from(items);
+    sorted.sort((a, b) {
+      final aBaru = a.produkId == lastAdded;
+      final bBaru = b.produkId == lastAdded;
+      if (aBaru == bBaru) return a.id.compareTo(b.id);
+      return aBaru ? -1 : 1;
+    });
+    return sorted;
+  }
+
   String _formatErrorMessage(Object error) => formatAppErrorMessage(error);
 
   Future<void> _updateItemQty(CartItem item, int newQty) async {
     if (_isProcessing) return;
     if (newQty <= 0) {
-      await _confirmDeleteItem(item);
+      if (await _confirmDeleteItem(item)) _reload();
       return;
     }
 
@@ -3123,13 +3732,19 @@ class _KeranjangPageState extends State<KeranjangPage> {
 
     try {
       await _api.updateKeranjang(id: item.id, jumlah: newQty);
+      final quantityChange = newQty - item.jumlah;
+      if (quantityChange > 0) {
+        StateKeranjang.increment(quantityChange);
+      } else {
+        StateKeranjang.decrement(-quantityChange);
+      }
       _reload();
     } on ConflictException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(formatAppErrorMessage(e)),
-          backgroundColor: const Color(0xFFB42318),
+          backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -3139,7 +3754,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(msg.isNotEmpty ? msg : formatAppErrorMessage(e)),
-          backgroundColor: const Color(0xFFB42318),
+          backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -3148,7 +3763,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Permintaan ubah kuantitas timeout. Coba lagi.'),
-          backgroundColor: Color(0xFFB42318),
+          backgroundColor: Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -3157,7 +3772,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(formatAppErrorMessage(e)),
-          backgroundColor: const Color(0xFFB42318),
+          backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -3170,7 +3785,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
     }
   }
 
-  Future<void> _confirmDeleteItem(CartItem item) async {
+  Future<bool> _confirmDeleteItem(CartItem item) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -3186,7 +3801,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFB42318),
+              backgroundColor: const Color(0xFFE14B4B),
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx, true),
@@ -3196,7 +3811,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
       ),
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true) return false;
 
     setState(() {
       _isProcessing = true;
@@ -3204,24 +3819,26 @@ class _KeranjangPageState extends State<KeranjangPage> {
 
     try {
       await _api.deleteKeranjang(item.id);
-      if (!mounted) return;
+      StateKeranjang.decrement(item.jumlah);
+      if (!mounted) return true;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('"${item.nama}" telah dihapus dari keranjang.'),
-          backgroundColor: const Color(0xFF16754B),
+          backgroundColor: const Color(0xFF2E9E5B),
           behavior: SnackBarBehavior.floating,
         ),
       );
-      _reload();
+      return true;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(formatAppErrorMessage(e)),
-          backgroundColor: const Color(0xFFB42318),
+          backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
+      return false;
     } finally {
       if (mounted) {
         setState(() {
@@ -3246,7 +3863,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
             if (SessionPengguna.currentAccount != null)
               Text(
                 'Akun: ${SessionPengguna.currentAccount!.nama}',
-                style: const TextStyle(fontSize: 11, color: Color(0xFF66758A)),
+                style: const TextStyle(fontSize: 11, color: Color(0xFF8A8A93)),
               ),
           ],
         ),
@@ -3275,7 +3892,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
                     const Icon(
                       Icons.error_outline,
                       size: 48,
-                      color: Color(0xFFB42318),
+                      color: Color(0xFFE14B4B),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -3283,13 +3900,13 @@ class _KeranjangPageState extends State<KeranjangPage> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 14,
-                        color: Color(0xFF182B4D),
+                        color: Color(0xFF15151A),
                       ),
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF011C6B),
+                        backgroundColor: const Color(0xFF2563EB),
                         foregroundColor: Colors.white,
                       ),
                       icon: const Icon(Icons.refresh),
@@ -3303,7 +3920,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
           }
 
           final cartData = snapshot.data;
-          final items = cartData?.items ?? [];
+          final items = _susunItems(cartData?.items ?? []);
 
           if (items.isEmpty) {
             return Center(
@@ -3315,7 +3932,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
                     Icon(
                       Icons.shopping_cart_outlined,
                       size: 64,
-                      color: Colors.grey.shade400,
+                      color: const Color(0xFF94A3B8),
                     ),
                     const SizedBox(height: 12),
                     const Text(
@@ -3323,22 +3940,19 @@ class _KeranjangPageState extends State<KeranjangPage> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF182B4D),
+                        color: Color(0xFF172554),
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
+                    const Text(
                       'Pilih perlengkapan kantor atau alat tulis impian Anda sekarang.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade600,
-                      ),
+                      style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
                     ),
                     const SizedBox(height: 18),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF011C6B),
+                        backgroundColor: const Color(0xFF2563EB),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,
@@ -3355,10 +3969,19 @@ class _KeranjangPageState extends State<KeranjangPage> {
             );
           }
 
-          // Sinkronisasi pilihan item
+          // Sinkronisasi pilihan item: hanya produk terakhir yang ditambahkan
+          // yang tercentang secara default.
           final itemIds = items.map((e) => e.id).toSet();
-          if (_selectedItemIds == null) {
-            _selectedItemIds = Set.from(itemIds);
+          final lastAdded = StateKeranjang.lastAddedProdukId;
+          if (_selectedItemIds == null ||
+              lastAdded != _appliedLastAddedProdukId) {
+            _selectedItemIds = lastAdded == null
+                ? <int>{}
+                : items
+                      .where((i) => i.produkId == lastAdded)
+                      .map((i) => i.id)
+                      .toSet();
+            _appliedLastAddedProdukId = lastAdded;
           } else {
             _selectedItemIds = _selectedItemIds!.intersection(itemIds);
           }
@@ -3382,19 +4005,17 @@ class _KeranjangPageState extends State<KeranjangPage> {
                   horizontal: 16,
                   vertical: 8,
                 ),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: Colors.white,
                   border: Border(
-                    bottom: BorderSide(
-                      color: const Color(0xFFD8E3F5),
-                      width: 0.8,
-                    ),
+                    bottom: BorderSide(color: Color(0xFFE2E8F0), width: 0.8),
                   ),
                 ),
                 child: Row(
                   children: [
                     Checkbox(
                       value: isAllSelected,
+                      activeColor: const Color(0xFF2563EB),
                       tristate: _selectedItemIds!.isNotEmpty && !isAllSelected,
                       onChanged: _isProcessing
                           ? null
@@ -3413,7 +4034,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF182B4D),
+                        color: Color(0xFF172554),
                       ),
                     ),
                   ],
@@ -3430,171 +4051,219 @@ class _KeranjangPageState extends State<KeranjangPage> {
                     final item = items[index];
                     final isChecked = _selectedItemIds!.contains(item.id);
 
-                    return Card(
-                      color: Colors.white,
-                      elevation: 0.8,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
-                          color: isChecked
-                              ? const Color(0xFF011C6B).withValues(alpha: 0.5)
-                              : const Color(0xFFD8E3F5),
-                          width: isChecked ? 1.2 : 0.8,
+                    return Dismissible(
+                      key: ValueKey(item.produkId),
+                      direction: _isProcessing
+                          ? DismissDirection.none
+                          : DismissDirection.endToStart,
+                      confirmDismiss: (_) => _confirmDeleteItem(item),
+                      onDismissed: (_) => _reload(),
+                      background: const SizedBox.shrink(),
+                      secondaryBackground: Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.delete_outline, color: Colors.white),
+                            SizedBox(width: 8),
+                            Text(
+                              'Hapus',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Checkbox(
-                                  value: isChecked,
-                                  onChanged: _isProcessing
-                                      ? null
-                                      : (val) {
-                                          setState(() {
-                                            if (val == true) {
-                                              _selectedItemIds!.add(item.id);
-                                            } else {
-                                              _selectedItemIds!.remove(item.id);
+                      child: Card(
+                        color: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: isChecked
+                                ? const Color(0xFF2563EB).withValues(alpha: 0.6)
+                                : const Color(0xFFE2E8F0),
+                            width: isChecked ? 1.2 : 0.8,
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Checkbox(
+                                    value: isChecked,
+                                    activeColor: const Color(0xFF2563EB),
+                                    onChanged: _isProcessing
+                                        ? null
+                                        : (val) {
+                                            setState(() {
+                                              if (val == true) {
+                                                _selectedItemIds!.add(item.id);
+                                              } else {
+                                                _selectedItemIds!.remove(
+                                                  item.id,
+                                                );
+                                              }
+                                            });
+                                          },
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item.nama,
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF172554),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Harga satuan: ${_formatRupiah(item.hargaSatuan)}',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Color(0xFF64748B),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete_outline,
+                                      size: 20,
+                                      color: Color(0xFFDC2626),
+                                    ),
+                                    tooltip: 'Hapus item',
+                                    onPressed: _isProcessing
+                                        ? null
+                                        : () async {
+                                            if (await _confirmDeleteItem(
+                                              item,
+                                            )) {
+                                              _reload();
                                             }
-                                          });
-                                        },
-                                ),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                          },
+                                  ),
+                                ],
+                              ),
+                              const Divider(
+                                height: 16,
+                                color: Color(0xFFF1F5F9),
+                              ),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  // Stepper Kuantitas
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF1F5F9),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: const Color(0xFFE2E8F0),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: Icon(
+                                            item.jumlah <= 1
+                                                ? Icons.delete_outline
+                                                : Icons.remove,
+                                            size: 16,
+                                            color: item.jumlah <= 1
+                                                ? const Color(0xFFDC2626)
+                                                : const Color(0xFF172554),
+                                          ),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(
+                                            minWidth: 32,
+                                            minHeight: 32,
+                                          ),
+                                          onPressed: _isProcessing
+                                              ? null
+                                              : () => _updateItemQty(
+                                                  item,
+                                                  item.jumlah - 1,
+                                                ),
+                                        ),
+                                        Container(
+                                          constraints: const BoxConstraints(
+                                            minWidth: 32,
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            '${item.jumlah}',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF172554),
+                                            ),
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.add,
+                                            size: 16,
+                                            color: Color(0xFF172554),
+                                          ),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(
+                                            minWidth: 32,
+                                            minHeight: 32,
+                                          ),
+                                          onPressed: _isProcessing
+                                              ? null
+                                              : () => _updateItemQty(
+                                                  item,
+                                                  item.jumlah + 1,
+                                                ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  // Subtotal per item
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
+                                      const Text(
+                                        'Subtotal',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Color(0xFF64748B),
+                                        ),
+                                      ),
                                       Text(
-                                        item.nama,
+                                        _formatRupiah(item.subtotal),
                                         style: const TextStyle(
                                           fontSize: 15,
                                           fontWeight: FontWeight.bold,
-                                          color: Color(0xFF182B4D),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Harga satuan: ${_formatRupiah(item.hargaSatuan)}',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey.shade600,
+                                          color: Color(0xFF172554),
                                         ),
                                       ),
                                     ],
                                   ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    size: 20,
-                                    color: Color(0xFFB42318),
-                                  ),
-                                  tooltip: 'Hapus item',
-                                  onPressed: _isProcessing
-                                      ? null
-                                      : () => _confirmDeleteItem(item),
-                                ),
-                              ],
-                            ),
-                            const Divider(height: 16),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                // Stepper Kuantitas
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF5F8FF),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: const Color(0xFFD8E3F5),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      IconButton(
-                                        icon: Icon(
-                                          item.jumlah <= 1
-                                              ? Icons.delete_outline
-                                              : Icons.remove,
-                                          size: 16,
-                                          color: item.jumlah <= 1
-                                              ? const Color(0xFFB42318)
-                                              : Colors.black87,
-                                        ),
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(
-                                          minWidth: 32,
-                                          minHeight: 32,
-                                        ),
-                                        onPressed: _isProcessing
-                                            ? null
-                                            : () => _updateItemQty(
-                                                item,
-                                                item.jumlah - 1,
-                                              ),
-                                      ),
-                                      Container(
-                                        constraints: const BoxConstraints(
-                                          minWidth: 32,
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          '${item.jumlah}',
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.add, size: 16),
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(
-                                          minWidth: 32,
-                                          minHeight: 32,
-                                        ),
-                                        onPressed: _isProcessing
-                                            ? null
-                                            : () => _updateItemQty(
-                                                item,
-                                                item.jumlah + 1,
-                                              ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-
-                                // Subtotal per item
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      'Subtotal',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                    ),
-                                    Text(
-                                      _formatRupiah(item.subtotal),
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF182B4D),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ],
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -3605,13 +4274,13 @@ class _KeranjangPageState extends State<KeranjangPage> {
               // 3. Bagian Bawah: Subtotal Terpilih & Lanjut ke Checkout
               Container(
                 padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: Colors.white,
                   boxShadow: [
                     BoxShadow(
-                      color: Color(0x0D000000),
+                      color: const Color(0xFF172554).withValues(alpha: 0.06),
                       blurRadius: 10,
-                      offset: Offset(0, -3),
+                      offset: const Offset(0, -3),
                     ),
                   ],
                 ),
@@ -3630,7 +4299,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
                                 'Subtotal (${selectedItems.length} terpilih)',
                                 style: const TextStyle(
                                   fontSize: 12,
-                                  color: Color(0xFF66758A),
+                                  color: Color(0xFF64748B),
                                 ),
                               ),
                               Text(
@@ -3638,7 +4307,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
                                 style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF011C6B),
+                                  color: Color(0xFF2563EB),
                                 ),
                               ),
                             ],
@@ -3646,8 +4315,8 @@ class _KeranjangPageState extends State<KeranjangPage> {
                           ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: canCheckout
-                                  ? const Color(0xFF182B4D)
-                                  : Colors.grey.shade400,
+                                  ? const Color(0xFF2563EB)
+                                  : const Color(0xFF94A3B8),
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 18,
@@ -3815,7 +4484,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Silakan pilih wilayah pengiriman.'),
-          backgroundColor: Color(0xFFB42318),
+          backgroundColor: Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -3826,7 +4495,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Silakan pilih kurir pengiriman.'),
-          backgroundColor: Color(0xFFB42318),
+          backgroundColor: Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -3839,7 +4508,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           content: Text(
             'Keranjang belanja kosong. Tidak dapat melakukan checkout.',
           ),
-          backgroundColor: Color(0xFFB42318),
+          backgroundColor: Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -3899,7 +4568,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
               Expanded(child: Text(formatAppErrorMessage(e))),
             ],
           ),
-          backgroundColor: const Color(0xFFB42318),
+          backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -3921,7 +4590,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           content: Text(
             msg.isNotEmpty ? 'Validasi gagal: $msg' : formatAppErrorMessage(e),
           ),
-          backgroundColor: const Color(0xFFB42318),
+          backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -3933,7 +4602,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           content: Text(
             'Koneksi melebihi batas waktu (15 detik). Tekan tombol Checkout kembali untuk memeriksa status transaksi Anda.',
           ),
-          backgroundColor: Color(0xFFB42318),
+          backgroundColor: Color(0xFFE14B4B),
           duration: Duration(seconds: 5),
           behavior: SnackBarBehavior.floating,
         ),
@@ -3943,7 +4612,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(formatAppErrorMessage(e)),
-          backgroundColor: const Color(0xFFB42318),
+          backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -3952,7 +4621,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(formatAppErrorMessage(e)),
-          backgroundColor: const Color(0xFFB42318),
+          backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -3979,7 +4648,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
             if (SessionPengguna.currentAccount != null)
               Text(
                 'Akun: ${SessionPengguna.currentAccount!.nama}',
-                style: const TextStyle(fontSize: 11, color: Color(0xFF66758A)),
+                style: const TextStyle(fontSize: 11, color: Color(0xFF8A8A93)),
               ),
           ],
         ),
@@ -4001,7 +4670,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     const Icon(
                       Icons.error_outline,
                       size: 48,
-                      color: Color(0xFFB42318),
+                      color: Color(0xFFE14B4B),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -4009,13 +4678,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 14,
-                        color: Color(0xFF182B4D),
+                        color: Color(0xFF15151A),
                       ),
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF011C6B),
+                        backgroundColor: const Color(0xFF2F6BFF),
                         foregroundColor: Colors.white,
                       ),
                       icon: const Icon(Icons.refresh),
@@ -4052,7 +4721,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF182B4D),
+                            color: Color(0xFF172554),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -4062,7 +4731,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: const Color(0xFFD8E3F5),
+                              color: const Color(0xFFE2E8F0),
                               width: 0.8,
                             ),
                           ),
@@ -4124,7 +4793,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 controller: _kotaController,
                                 decoration: InputDecoration(
                                   labelText: 'Kota Tujuan *',
-                                  helperText: 'Pengiriman ATK Mart Aoen saat ini khusus area Kota Malang',
+                                  helperText: 'Pengiriman ATK Mart saat ini khusus area Kota Malang',
                                   prefixIcon: const Icon(
                                     Icons.location_city_outlined,
                                   ),
@@ -4158,7 +4827,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF182B4D),
+                            color: Color(0xFF172554),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -4168,7 +4837,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: const Color(0xFFD8E3F5),
+                              color: const Color(0xFFE2E8F0),
                               width: 0.8,
                             ),
                           ),
@@ -4262,7 +4931,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF182B4D),
+                            color: Color(0xFF172554),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -4271,7 +4940,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: const Color(0xFFD8E3F5),
+                              color: const Color(0xFFE2E8F0),
                               width: 0.8,
                             ),
                           ),
@@ -4297,8 +4966,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                         color:
                                             _metodePembayaran ==
                                                 'tunai_di_tempat'
-                                            ? const Color(0xFF011C6B)
-                                            : Colors.grey,
+                                            ? const Color(0xFF2563EB)
+                                            : const Color(0xFF94A3B8),
                                       ),
                                       const SizedBox(width: 12),
                                       const Expanded(
@@ -4311,6 +4980,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                               style: TextStyle(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.w600,
+                                                color: Color(0xFF172554),
                                               ),
                                             ),
                                             SizedBox(height: 2),
@@ -4318,7 +4988,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                               'Bayar langsung secara tunai saat barang diantarkan kurir',
                                               style: TextStyle(
                                                 fontSize: 12,
-                                                color: Color(0xFF66758A),
+                                                color: Color(0xFF64748B),
                                               ),
                                             ),
                                           ],
@@ -4328,7 +4998,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                   ),
                                 ),
                               ),
-                              const Divider(height: 1),
+                              const Divider(
+                                height: 1,
+                                color: Color(0xFFF1F5F9),
+                              ),
                               InkWell(
                                 onTap: () {
                                   setState(() {
@@ -4349,8 +5022,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                         color:
                                             _metodePembayaran ==
                                                 'transfer_manual'
-                                            ? const Color(0xFF011C6B)
-                                            : Colors.grey,
+                                            ? const Color(0xFF2563EB)
+                                            : const Color(0xFF94A3B8),
                                       ),
                                       const SizedBox(width: 12),
                                       const Expanded(
@@ -4363,6 +5036,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                               style: TextStyle(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.w600,
+                                                color: Color(0xFF172554),
                                               ),
                                             ),
                                             SizedBox(height: 2),
@@ -4370,7 +5044,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                               'Transfer ke rekening toko dan konfirmasi pembayaran',
                                               style: TextStyle(
                                                 fontSize: 12,
-                                                color: Color(0xFF66758A),
+                                                color: Color(0xFF64748B),
                                               ),
                                             ),
                                           ],
@@ -4392,7 +5066,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF182B4D),
+                            color: Color(0xFF172554),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -4402,7 +5076,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: const Color(0xFFD8E3F5),
+                              color: const Color(0xFFE2E8F0),
                               width: 0.8,
                             ),
                           ),
@@ -4417,10 +5091,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
                               ? Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFFDE8E7),
+                                    color: const Color(0xFFFFF0F0),
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                      color: const Color(0xFFB42318)
+                                      color: const Color(0xFFE14B4B)
                                           .withValues(alpha: 0.3),
                                     ),
                                   ),
@@ -4431,7 +5105,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                       Text(
                                         _errorSummary!,
                                         style: const TextStyle(
-                                          color: Color(0xFFB42318),
+                                          color: Color(0xFFE14B4B),
                                           fontSize: 13,
                                         ),
                                       ),
@@ -4445,7 +5119,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                         label: const Text('Hitung Ulang'),
                                         style: TextButton.styleFrom(
                                           foregroundColor: const Color(
-                                            0xFF011C6B,
+                                            0xFF2F6BFF,
                                           ),
                                           padding: EdgeInsets.zero,
                                           minimumSize: Size.zero,
@@ -4466,7 +5140,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                           'Subtotal Produk',
                                           style: TextStyle(
                                             fontSize: 13,
-                                            color: Color(0xFF66758A),
+                                            color: Color(0xFF64748B),
                                           ),
                                         ),
                                         Text(
@@ -4476,7 +5150,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                           style: const TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w600,
-                                            color: Color(0xFF182B4D),
+                                            color: Color(0xFF172554),
                                           ),
                                         ),
                                       ],
@@ -4490,7 +5164,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                           'Ongkos Kirim',
                                           style: TextStyle(
                                             fontSize: 13,
-                                            color: Color(0xFF66758A),
+                                            color: Color(0xFF64748B),
                                           ),
                                         ),
                                         Text(
@@ -4511,13 +5185,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                                 _ringkasanKeranjang
                                                         ?.ongkosKirim !=
                                                     null
-                                                ? const Color(0xFF182B4D)
-                                                : Colors.grey.shade600,
+                                                ? const Color(0xFF172554)
+                                                : const Color(0xFF64748B),
                                           ),
                                         ),
                                       ],
                                     ),
-                                    const Divider(height: 20),
+                                    const Divider(
+                                      height: 20,
+                                      color: Color(0xFFF1F5F9),
+                                    ),
                                     Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceBetween,
@@ -4527,7 +5204,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                           style: TextStyle(
                                             fontSize: 15,
                                             fontWeight: FontWeight.bold,
-                                            color: Color(0xFF182B4D),
+                                            color: Color(0xFF172554),
                                           ),
                                         ),
                                         Text(
@@ -4539,7 +5216,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                           style: const TextStyle(
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,
-                                            color: Color(0xFF011C6B),
+                                            color: Color(0xFF2563EB),
                                           ),
                                         ),
                                       ],
@@ -4555,13 +5232,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 // Tombol Buat Pesanan
                 Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: Colors.white,
                     boxShadow: [
                       BoxShadow(
-                        color: Color(0x0D000000),
+                        color: const Color(0xFF172554).withValues(alpha: 0.06),
                         blurRadius: 10,
-                        offset: Offset(0, -3),
+                        offset: const Offset(0, -3),
                       ),
                     ],
                   ),
@@ -4572,7 +5249,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       height: 48,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF182B4D),
+                          backgroundColor: const Color(0xFF2563EB),
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -4639,12 +5316,12 @@ class KonfirmasiPesananPage extends StatelessWidget {
                 width: 76,
                 height: 76,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFE7F6ED),
+                  color: Color(0xFFECFDF5),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.check_circle,
-                  color: Color(0xFF16754B),
+                  color: Color(0xFF059669),
                   size: 48,
                 ),
               ),
@@ -4654,14 +5331,14 @@ class KonfirmasiPesananPage extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF182B4D),
+                  color: Color(0xFF172554),
                 ),
               ),
               const SizedBox(height: 6),
-              Text(
+              const Text(
                 'Pesanan Anda telah berhasil dibuat dan diteruskan ke pihak toko.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+                style: TextStyle(fontSize: 14, color: Color(0xFF64748B)),
               ),
               const SizedBox(height: 24),
 
@@ -4673,7 +5350,7 @@ class KonfirmasiPesananPage extends StatelessWidget {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: const Color(0xFFD8E3F5),
+                    color: const Color(0xFFE2E8F0),
                     width: 0.8,
                   ),
                 ),
@@ -4686,7 +5363,7 @@ class KonfirmasiPesananPage extends StatelessWidget {
                           'Nomor Pesanan',
                           style: TextStyle(
                             fontSize: 13,
-                            color: Color(0xFF66758A),
+                            color: Color(0xFF8A8A93),
                           ),
                         ),
                         SelectableText(
@@ -4694,7 +5371,7 @@ class KonfirmasiPesananPage extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF011C6B),
+                            color: Color(0xFF2563EB),
                           ),
                         ),
                       ],
@@ -4707,7 +5384,7 @@ class KonfirmasiPesananPage extends StatelessWidget {
                           'Status Pesanan',
                           style: TextStyle(
                             fontSize: 13,
-                            color: Color(0xFF66758A),
+                            color: Color(0xFF64748B),
                           ),
                         ),
                         Container(
@@ -4716,10 +5393,10 @@ class KonfirmasiPesananPage extends StatelessWidget {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFF2D6),
+                            color: const Color(0xFFFEF3C7),
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(
-                              color: const Color(0xFFA85D00),
+                              color: const Color(0xFFFDE68A),
                               width: 0.8,
                             ),
                           ),
@@ -4728,13 +5405,13 @@ class KonfirmasiPesananPage extends StatelessWidget {
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFFA85D00),
+                              color: Color(0xFFD97706),
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const Divider(height: 24),
+                    const Divider(height: 24, color: Color(0xFFF1F5F9)),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -4742,7 +5419,7 @@ class KonfirmasiPesananPage extends StatelessWidget {
                           'Subtotal Produk',
                           style: TextStyle(
                             fontSize: 13,
-                            color: Color(0xFF66758A),
+                            color: Color(0xFF64748B),
                           ),
                         ),
                         Text(
@@ -4750,6 +5427,7 @@ class KonfirmasiPesananPage extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
+                            color: Color(0xFF172554),
                           ),
                         ),
                       ],
@@ -4762,7 +5440,7 @@ class KonfirmasiPesananPage extends StatelessWidget {
                           'Ongkos Kirim',
                           style: TextStyle(
                             fontSize: 13,
-                            color: Color(0xFF66758A),
+                            color: Color(0xFF64748B),
                           ),
                         ),
                         Text(
@@ -4770,11 +5448,12 @@ class KonfirmasiPesananPage extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
+                            color: Color(0xFF172554),
                           ),
                         ),
                       ],
                     ),
-                    const Divider(height: 24),
+                    const Divider(height: 24, color: Color(0xFFF1F5F9)),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -4783,7 +5462,7 @@ class KonfirmasiPesananPage extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF182B4D),
+                            color: Color(0xFF172554),
                           ),
                         ),
                         Text(
@@ -4791,7 +5470,7 @@ class KonfirmasiPesananPage extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF011C6B),
+                            color: Color(0xFF2563EB),
                           ),
                         ),
                       ],
@@ -4807,7 +5486,7 @@ class KonfirmasiPesananPage extends StatelessWidget {
                 height: 48,
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF182B4D),
+                    backgroundColor: const Color(0xFF2563EB),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -4837,8 +5516,8 @@ class KonfirmasiPesananPage extends StatelessWidget {
                 height: 48,
                 child: OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF011C6B),
-                    side: const BorderSide(color: Color(0xFF011C6B)),
+                    foregroundColor: const Color(0xFF172554),
+                    side: const BorderSide(color: Color(0xFF172554)),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -4863,6 +5542,9 @@ class KonfirmasiPesananPage extends StatelessWidget {
                 width: double.infinity,
                 height: 48,
                 child: TextButton.icon(
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF64748B),
+                  ),
                   icon: const Icon(Icons.storefront_outlined),
                   label: const Text(
                     'Kembali ke Katalog Produk',
@@ -4892,57 +5574,57 @@ Widget _buildOrderStatusBadge(String status) {
 
   switch (status.toLowerCase()) {
     case 'menunggu_stok':
-      bg = const Color(0xFFFFF2D6);
-      border = const Color(0xFFA85D00);
-      text = const Color(0xFFA85D00);
+      bg = const Color(0xFFFEF3C7);
+      border = const Color(0xFFFDE68A);
+      text = const Color(0xFFD97706);
       label = 'MENUNGGU STOK';
       break;
     case 'menunggu_pembayaran':
-      bg = const Color(0xFFFFF2D6);
-      border = const Color(0xFFA85D00);
-      text = const Color(0xFFA85D00);
+      bg = const Color(0xFFFFFBEB);
+      border = const Color(0xFFFCD34D);
+      text = const Color(0xFFB45309);
       label = 'MENUNGGU PEMBAYARAN';
       break;
     case 'menunggu_konfirmasi':
-      bg = const Color(0xFFFFF2D6);
-      border = const Color(0xFFA85D00);
-      text = const Color(0xFFA85D00);
+      bg = const Color(0xFFFEF3C7);
+      border = const Color(0xFFFDE68A);
+      text = const Color(0xFFD97706);
       label = 'MENUNGGU KONFIRMASI';
       break;
     case 'dibayar':
-      bg = const Color(0xFFEAF1FF);
-      border = const Color(0xFF011C6B);
-      text = const Color(0xFF46648F);
+      bg = const Color(0xFFEFF6FF);
+      border = const Color(0xFFBFDBFE);
+      text = const Color(0xFF1D4ED8);
       label = 'DIBAYAR';
       break;
     case 'diproses':
-      bg = const Color(0xFFE8F0FF);
-      border = const Color(0xFF011C6B);
-      text = const Color(0xFF011C6B);
+      bg = const Color(0xFFEFF6FF);
+      border = const Color(0xFF93C5FD);
+      text = const Color(0xFF2563EB);
       label = 'DIPROSES';
       break;
     case 'dikirim':
-      bg = const Color(0xFFFFF2D6);
-      border = const Color(0xFF955A0B);
-      text = const Color(0xFF955A0B);
+      bg = const Color(0xFFFAF5FF);
+      border = const Color(0xFFE9D5FF);
+      text = const Color(0xFF7E22CE);
       label = 'DIKIRIM';
       break;
     case 'selesai':
-      bg = const Color(0xFFE7F6ED);
-      border = const Color(0xFF16754B);
-      text = const Color(0xFF16754B);
+      bg = const Color(0xFFECFDF5);
+      border = const Color(0xFFA7F3D0);
+      text = const Color(0xFF059669);
       label = 'SELESAI';
       break;
     case 'dibatalkan':
-      bg = const Color(0xFFFDE8E7);
-      border = const Color(0xFFB42318);
-      text = const Color(0xFFB42318);
+      bg = const Color(0xFFFEF2F2);
+      border = const Color(0xFFFECACA);
+      text = const Color(0xFFDC2626);
       label = 'DIBATALKAN';
       break;
     default:
-      bg = Colors.grey.shade100;
-      border = Colors.grey.shade400;
-      text = Colors.grey.shade800;
+      bg = const Color(0xFFF1F5F9);
+      border = const Color(0xFFE2E8F0);
+      text = const Color(0xFF64748B);
   }
 
   return Container(
@@ -5034,7 +5716,7 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
             if (SessionPengguna.currentAccount != null)
               Text(
                 'Akun: ${SessionPengguna.currentAccount!.nama}',
-                style: const TextStyle(fontSize: 11, color: Color(0xFF66758A)),
+                style: const TextStyle(fontSize: 11, color: Color(0xFF8A8A93)),
               ),
           ],
         ),
@@ -5050,6 +5732,13 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                 );
               },
             ),
+          IconButton(
+            icon: const AnimatedCartBadgeIcon(),
+            tooltip: 'Keranjang',
+            onPressed: () {
+              AppNav.push(context, const KeranjangPage());
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Segarkan',
@@ -5074,7 +5763,7 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                     const Icon(
                       Icons.error_outline,
                       size: 48,
-                      color: Color(0xFFB42318),
+                      color: Color(0xFFE14B4B),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -5082,13 +5771,13 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 14,
-                        color: Color(0xFF182B4D),
+                        color: Color(0xFF15151A),
                       ),
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF011C6B),
+                        backgroundColor: const Color(0xFF2F6BFF),
                         foregroundColor: Colors.white,
                       ),
                       icon: const Icon(Icons.refresh),
@@ -5117,7 +5806,7 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                     Icon(
                       Icons.local_shipping_outlined,
                       size: 64,
-                      color: Colors.grey.shade400,
+                      color: const Color(0xFF94A3B8),
                     ),
                     const SizedBox(height: 12),
                     const Text(
@@ -5125,23 +5814,24 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF182B4D),
+                        color: Color(0xFF172554),
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
+                    const Text(
                       'Seluruh pesanan Anda telah selesai atau Anda belum membuat pesanan baru.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade600,
-                      ),
+                      style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
                     ),
                     const SizedBox(height: 18),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF172554),
+                            side: const BorderSide(color: Color(0xFFCBD5E1)),
+                          ),
                           icon: const Icon(Icons.history_rounded),
                           label: const Text('Riwayat Selesai'),
                           onPressed: () {
@@ -5156,7 +5846,7 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                         const SizedBox(width: 10),
                         ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF011C6B),
+                            backgroundColor: const Color(0xFF2563EB),
                             foregroundColor: Colors.white,
                           ),
                           icon: const Icon(Icons.storefront_outlined),
@@ -5227,15 +5917,15 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                   ),
                 ),
               ),
-              const Divider(height: 1, color: Color(0xFFD8E3F5)),
+              const Divider(height: 1, color: Color(0xFFE2E8F0)),
 
               Expanded(
                 child: filteredOrders.isEmpty
-                    ? Center(
+                    ? const Center(
                         child: Text(
-                          'Tidak ada pesanan aktif dengan status "$_filterStatus".',
+                          'Tidak ada pesanan aktif.',
                           style: TextStyle(
-                            color: Colors.grey.shade600,
+                            color: Color(0xFF64748B),
                             fontSize: 13,
                           ),
                         ),
@@ -5253,11 +5943,11 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
 
                           return Card(
                             color: Colors.white,
-                            elevation: 0.8,
+                            elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                               side: const BorderSide(
-                                color: Color(0xFFD8E3F5),
+                                color: Color(0xFFE2E8F0),
                                 width: 0.8,
                               ),
                             ),
@@ -5296,16 +5986,16 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                                                 style: const TextStyle(
                                                   fontSize: 15,
                                                   fontWeight: FontWeight.bold,
-                                                  color: Color(0xFF182B4D),
+                                                  color: Color(0xFF172554),
                                                 ),
                                               ),
                                               if (order.createdAt != null) ...[
                                                 const SizedBox(height: 2),
                                                 Text(
                                                   order.createdAt!,
-                                                  style: TextStyle(
+                                                  style: const TextStyle(
                                                     fontSize: 12,
-                                                    color: Colors.grey.shade600,
+                                                    color: Color(0xFF64748B),
                                                   ),
                                                 ),
                                               ],
@@ -5326,10 +6016,10 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                                         vertical: 6,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFFFFFFF),
+                                        color: const Color(0xFFF8FAFC),
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
-                                          color: const Color(0xFFD8E3F5),
+                                          color: const Color(0xFFE2E8F0),
                                         ),
                                       ),
                                       child: Row(
@@ -5337,7 +6027,7 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                                           const Icon(
                                             Icons.info_outline,
                                             size: 14,
-                                            color: Color(0xFF536887),
+                                            color: Color(0xFF2563EB),
                                           ),
                                           const SizedBox(width: 6),
                                           Expanded(
@@ -5345,7 +6035,7 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                                               hint,
                                               style: const TextStyle(
                                                 fontSize: 11.5,
-                                                color: Color(0xFF536887),
+                                                color: Color(0xFF475569),
                                               ),
                                             ),
                                           ),
@@ -5354,7 +6044,10 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                                     ),
 
                                     const SizedBox(height: 10),
-                                    const Divider(height: 1),
+                                    const Divider(
+                                      height: 1,
+                                      color: Color(0xFFF1F5F9),
+                                    ),
                                     const SizedBox(height: 10),
 
                                     // Baris 2: Rincian Singkat (Jumlah Item, Kurir, Total)
@@ -5369,17 +6062,17 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                                             if (order.jumlahItem != null)
                                               Text(
                                                 '${order.jumlahItem} Produk dipesan',
-                                                style: TextStyle(
+                                                style: const TextStyle(
                                                   fontSize: 12,
-                                                  color: Colors.grey.shade700,
+                                                  color: Color(0xFF64748B),
                                                 ),
                                               ),
                                             if (order.kurir != null)
                                               Text(
                                                 'Kurir: ${order.kurir}',
-                                                style: TextStyle(
+                                                style: const TextStyle(
                                                   fontSize: 11,
-                                                  color: Colors.grey.shade500,
+                                                  color: Color(0xFF94A3B8),
                                                 ),
                                               ),
                                           ],
@@ -5392,7 +6085,7 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                                               'Total Tagihan',
                                               style: TextStyle(
                                                 fontSize: 11,
-                                                color: Color(0xFF66758A),
+                                                color: Color(0xFF64748B),
                                               ),
                                             ),
                                             Text(
@@ -5400,7 +6093,7 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                                               style: const TextStyle(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.bold,
-                                                color: Color(0xFF011C6B),
+                                                color: Color(0xFF2563EB),
                                               ),
                                             ),
                                           ],
@@ -5416,10 +6109,10 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
                                       child: OutlinedButton.icon(
                                         style: OutlinedButton.styleFrom(
                                           foregroundColor: const Color(
-                                            0xFF011C6B,
+                                            0xFF2563EB,
                                           ),
                                           side: const BorderSide(
-                                            color: Color(0xFF011C6B),
+                                            color: Color(0xFFBFDBFE),
                                             width: 1,
                                           ),
                                           shape: RoundedRectangleBorder(
@@ -5476,10 +6169,14 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
       child: ChoiceChip(
         label: Text('$label ($count)'),
         selected: isSelected,
-        selectedColor: const Color(0xFF011C6B),
-        backgroundColor: const Color(0xFFEAF1FF),
+        selectedColor: const Color(0xFF2563EB),
+        backgroundColor: const Color(0xFFF1F5F9),
+        side: BorderSide(
+          color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
+          width: 0.8,
+        ),
         labelStyle: TextStyle(
-          color: isSelected ? Colors.white : const Color(0xFF182B4D),
+          color: isSelected ? Colors.white : const Color(0xFF64748B),
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           fontSize: 11.5,
         ),
@@ -5538,7 +6235,7 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
             if (SessionPengguna.currentAccount != null)
               Text(
                 'Akun: ${SessionPengguna.currentAccount!.nama}',
-                style: const TextStyle(fontSize: 11, color: Color(0xFF66758A)),
+                style: const TextStyle(fontSize: 11, color: Color(0xFF8A8A93)),
               ),
           ],
         ),
@@ -5554,6 +6251,13 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                 );
               },
             ),
+          IconButton(
+            icon: const AnimatedCartBadgeIcon(),
+            tooltip: 'Keranjang',
+            onPressed: () {
+              AppNav.push(context, const KeranjangPage());
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Segarkan',
@@ -5578,7 +6282,7 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                     const Icon(
                       Icons.error_outline,
                       size: 48,
-                      color: Color(0xFFB42318),
+                      color: Color(0xFFE14B4B),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -5586,13 +6290,13 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 14,
-                        color: Color(0xFF182B4D),
+                        color: Color(0xFF15151A),
                       ),
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF011C6B),
+                        backgroundColor: const Color(0xFF2563EB),
                         foregroundColor: Colors.white,
                       ),
                       icon: const Icon(Icons.refresh),
@@ -5619,7 +6323,7 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                     Icon(
                       Icons.check_circle_outline,
                       size: 64,
-                      color: Colors.grey.shade400,
+                      color: const Color(0xFF94A3B8),
                     ),
                     const SizedBox(height: 12),
                     const Text(
@@ -5627,17 +6331,14 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF182B4D),
+                        color: Color(0xFF172554),
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
+                    const Text(
                       'Pesanan yang telah berhasil diterima dan diselesaikan akan tercatat di sini.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade600,
-                      ),
+                      style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
                     ),
                     const SizedBox(height: 18),
                     Row(
@@ -5645,7 +6346,7 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                       children: [
                         ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF011C6B),
+                            backgroundColor: const Color(0xFF2563EB),
                             foregroundColor: Colors.white,
                           ),
                           icon: const Icon(Icons.local_shipping_outlined),
@@ -5675,10 +6376,10 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
               final order = orders[index];
               return Card(
                 color: Colors.white,
-                elevation: 0.8,
+                elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
-                  side: const BorderSide(color: Color(0xFFD8E3F5), width: 0.8),
+                  side: const BorderSide(color: Color(0xFFE2E8F0), width: 0.8),
                 ),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(14),
@@ -5712,16 +6413,16 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                                     style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.bold,
-                                      color: Color(0xFF182B4D),
+                                      color: Color(0xFF172554),
                                     ),
                                   ),
                                   if (order.createdAt != null) ...[
                                     const SizedBox(height: 2),
                                     Text(
                                       order.createdAt!,
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontSize: 12,
-                                        color: Colors.grey.shade600,
+                                        color: Color(0xFF64748B),
                                       ),
                                     ),
                                   ],
@@ -5734,7 +6435,7 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                         ),
 
                         const SizedBox(height: 12),
-                        const Divider(height: 1),
+                        const Divider(height: 1, color: Color(0xFFF1F5F9)),
                         const SizedBox(height: 12),
 
                         // Baris 2: Rincian Singkat (Jumlah Item, Kurir, Total)
@@ -5747,17 +6448,17 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                                 if (order.jumlahItem != null)
                                   Text(
                                     '${order.jumlahItem} Produk dibeli',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 12,
-                                      color: Colors.grey.shade700,
+                                      color: Color(0xFF64748B),
                                     ),
                                   ),
                                 if (order.kurir != null)
                                   Text(
                                     'Kurir: ${order.kurir}',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 11,
-                                      color: Colors.grey.shade500,
+                                      color: Color(0xFF94A3B8),
                                     ),
                                   ),
                               ],
@@ -5769,7 +6470,7 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                                   'Total Tagihan',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: Color(0xFF66758A),
+                                    color: Color(0xFF64748B),
                                   ),
                                 ),
                                 Text(
@@ -5777,7 +6478,7 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF011C6B),
+                                    color: Color(0xFF2563EB),
                                   ),
                                 ),
                               ],
@@ -5792,20 +6493,20 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                           alignment: Alignment.centerRight,
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
-                            children: [
+                            children: const [
                               Text(
                                 'Lihat Rincian',
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.grey.shade700,
+                                  color: Color(0xFF2563EB),
                                 ),
                               ),
-                              const SizedBox(width: 4),
+                              SizedBox(width: 4),
                               Icon(
                                 Icons.chevron_right,
                                 size: 16,
-                                color: Colors.grey.shade700,
+                                color: Color(0xFF2563EB),
                               ),
                             ],
                           ),
@@ -5886,7 +6587,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF16754B),
+              backgroundColor: const Color(0xFF2E9E5B),
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx, true),
@@ -5912,7 +6613,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
           content: Text(
             'Status pesanan ${order.nomorPesanan} berhasil diubah ke "$statusBaru".',
           ),
-          backgroundColor: const Color(0xFF16754B),
+          backgroundColor: const Color(0xFF2E9E5B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -5922,7 +6623,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_formatErrorMessage(e)),
-          backgroundColor: const Color(0xFFB42318),
+          backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -5957,7 +6658,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF16754B),
+              backgroundColor: const Color(0xFF2E9E5B),
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx, true),
@@ -5981,7 +6682,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Terima kasih! Pesanan telah selesai.'),
-          backgroundColor: Color(0xFF16754B),
+          backgroundColor: Color(0xFF2E9E5B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -5991,7 +6692,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_formatErrorMessage(e)),
-          backgroundColor: const Color(0xFFB42318),
+          backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -6034,12 +6735,12 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF011C6B).withValues(alpha: 0.1),
+                    color: const Color(0xFF2F6BFF).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
                     Icons.account_balance,
-                    color: Color(0xFF011C6B),
+                    color: Color(0xFF2F6BFF),
                     size: 24,
                   ),
                 ),
@@ -6048,7 +6749,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Bank ATK Mart Aoen Virtual Account',
+                      'Bank ATK Mart Virtual Account',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -6056,7 +6757,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                     ),
                     Text(
                       'Simulasi Pembayaran ATM & Internet Banking',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF66758A)),
+                      style: TextStyle(fontSize: 12, color: Color(0xFF8A8A93)),
                     ),
                   ],
                 ),
@@ -6066,9 +6767,9 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF0F4FA),
+                color: const Color(0xFFF8F9FA),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFD8E3F5)),
+                border: Border.all(color: const Color(0xFFE6E6EC)),
               ),
               child: Column(
                 children: [
@@ -6079,7 +6780,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                         'Nomor Virtual Account',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Color(0xFF66758A),
+                          color: Color(0xFF8A8A93),
                         ),
                       ),
                       SelectableText(
@@ -6087,7 +6788,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF011C6B),
+                          color: Color(0xFF2F6BFF),
                         ),
                       ),
                     ],
@@ -6100,7 +6801,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                         'Total Tagihan',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Color(0xFF66758A),
+                          color: Color(0xFF8A8A93),
                         ),
                       ),
                       Text(
@@ -6108,7 +6809,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF182B4D),
+                          color: Color(0xFF15151A),
                         ),
                       ),
                     ],
@@ -6118,13 +6819,13 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Petunjuk Pembayaran ATM Bank ATK Mart Aoen:',
+              'Petunjuk Pembayaran ATM Bank ATK Mart:',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             _buildAtmStep(
               '1',
-              'Masukkan kartu ATM dan 6 digit PIN Bank ATK Mart Aoen Anda.',
+              'Masukkan kartu ATM dan 6 digit PIN Bank ATK Mart Anda.',
             ),
             _buildAtmStep(
               '2',
@@ -6145,7 +6846,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
               height: 48,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF16754B),
+                  backgroundColor: const Color(0xFF2E9E5B),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -6179,7 +6880,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
             height: 18,
             alignment: Alignment.center,
             decoration: const BoxDecoration(
-              color: Color(0xFFE8F0FF),
+              color: Color(0xFFEAF0FF),
               shape: BoxShape.circle,
             ),
             child: Text(
@@ -6187,7 +6888,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF011C6B),
+                color: Color(0xFF2F6BFF),
               ),
             ),
           ),
@@ -6195,7 +6896,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF182B4D)),
+              style: const TextStyle(fontSize: 12, color: Color(0xFF15151A)),
             ),
           ),
         ],
@@ -6219,7 +6920,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF011C6B),
+              backgroundColor: const Color(0xFF2F6BFF),
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx, true),
@@ -6245,7 +6946,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
           content: Text(
             'Konfirmasi pembayaran berhasil dikirim! Menunggu verifikasi dari pengelola toko.',
           ),
-          backgroundColor: Color(0xFF16754B),
+          backgroundColor: Color(0xFF2E9E5B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -6255,7 +6956,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_formatErrorMessage(e)),
-          backgroundColor: const Color(0xFFB42318),
+          backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -6279,21 +6980,21 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFD8E3F5), width: 0.8),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 0.8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 18, color: const Color(0xFF011C6B)),
+              Icon(icon, size: 18, color: const Color(0xFF2563EB)),
               const SizedBox(width: 8),
               Text(
                 title,
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF182B4D),
+                  color: Color(0xFF172554),
                 ),
               ),
             ],
@@ -6335,7 +7036,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                     const Icon(
                       Icons.error_outline,
                       size: 48,
-                      color: Color(0xFFB42318),
+                      color: Color(0xFFE14B4B),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -6343,13 +7044,13 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 14,
-                        color: Color(0xFF182B4D),
+                        color: Color(0xFF15151A),
                       ),
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF011C6B),
+                        backgroundColor: const Color(0xFF2F6BFF),
                         foregroundColor: Colors.white,
                       ),
                       icon: const Icon(Icons.refresh),
@@ -6383,7 +7084,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: const Color(0xFFD8E3F5),
+                      color: const Color(0xFFE2E8F0),
                       width: 0.8,
                     ),
                   ),
@@ -6397,7 +7098,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                             'Status Pesanan',
                             style: TextStyle(
                               fontSize: 13,
-                              color: Color(0xFF66758A),
+                              color: Color(0xFF64748B),
                             ),
                           ),
                           _buildOrderStatusBadge(order.status),
@@ -6411,7 +7112,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                             'Nomor Pesanan',
                             style: TextStyle(
                               fontSize: 13,
-                              color: Color(0xFF66758A),
+                              color: Color(0xFF64748B),
                             ),
                           ),
                           SelectableText(
@@ -6419,7 +7120,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF011C6B),
+                              color: Color(0xFF2563EB),
                             ),
                           ),
                         ],
@@ -6433,14 +7134,14 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                               'Waktu Pemesanan',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Color(0xFF66758A),
+                                color: Color(0xFF8A8A93),
                               ),
                             ),
                             Text(
                               order.createdAt!,
                               style: const TextStyle(
                                 fontSize: 13,
-                                color: Color(0xFF182B4D),
+                                color: Color(0xFF15151A),
                               ),
                             ),
                           ],
@@ -6451,16 +7152,16 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFF2D6),
+                            color: const Color(0xFFFFF9E6),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFFFE0A6)),
+                            border: Border.all(color: const Color(0xFFFFD591)),
                           ),
                           child: const Row(
                             children: [
                               Icon(
                                 Icons.hourglass_top,
                                 size: 20,
-                                color: Color(0xFFA85D00),
+                                color: Color(0xFFD46B08),
                               ),
                               SizedBox(width: 8),
                               Expanded(
@@ -6468,7 +7169,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                                   'Pesanan pre-order ini sedang menunggu ketersediaan stok dari toko sebelum pembayaran atau pemrosesan.',
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: Color(0xFF76501D),
+                                    color: Color(0xFF873800),
                                   ),
                                 ),
                               ),
@@ -6511,7 +7212,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                                     style: const TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
-                                      color: Color(0xFF182B4D),
+                                      color: Color(0xFF15151A),
                                     ),
                                   ),
                                   if (item.menungguStok) ...[
@@ -6522,10 +7223,10 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                                         vertical: 2,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFFFF2D6),
+                                        color: const Color(0xFFFFF3D6),
                                         borderRadius: BorderRadius.circular(4),
                                         border: Border.all(
-                                          color: const Color(0xFFA85D00),
+                                          color: const Color(0xFFE0A32E),
                                           width: 0.6,
                                         ),
                                       ),
@@ -6534,7 +7235,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                                         style: TextStyle(
                                           fontSize: 10,
                                           fontWeight: FontWeight.bold,
-                                          color: Color(0xFFA85D00),
+                                          color: Color(0xFF946200),
                                         ),
                                       ),
                                     ),
@@ -6571,7 +7272,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF182B4D),
+                                color: Color(0xFF15151A),
                               ),
                             ),
                           ],
@@ -6598,7 +7299,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                               'Penerima',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Color(0xFF66758A),
+                                color: Color(0xFF8A8A93),
                               ),
                             ),
                           ),
@@ -6608,7 +7309,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                               style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF182B4D),
+                                color: Color(0xFF15151A),
                               ),
                             ),
                           ),
@@ -6624,7 +7325,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                               'Alamat Lengkap',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Color(0xFF66758A),
+                                color: Color(0xFF8A8A93),
                               ),
                             ),
                           ),
@@ -6633,7 +7334,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                               order.alamat ?? '-',
                               style: const TextStyle(
                                 fontSize: 13,
-                                color: Color(0xFF182B4D),
+                                color: Color(0xFF15151A),
                               ),
                             ),
                           ),
@@ -6649,7 +7350,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                               'Wilayah / Kota',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Color(0xFF66758A),
+                                color: Color(0xFF8A8A93),
                               ),
                             ),
                           ),
@@ -6665,7 +7366,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                               ].join(', '),
                               style: const TextStyle(
                                 fontSize: 13,
-                                color: Color(0xFF182B4D),
+                                color: Color(0xFF15151A),
                               ),
                             ),
                           ),
@@ -6681,7 +7382,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                               'Layanan Kurir',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Color(0xFF66758A),
+                                color: Color(0xFF8A8A93),
                               ),
                             ),
                           ),
@@ -6691,7 +7392,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                               style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF182B4D),
+                                color: Color(0xFF15151A),
                               ),
                             ),
                           ),
@@ -6716,7 +7417,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                             'Metode Pembayaran',
                             style: TextStyle(
                               fontSize: 13,
-                              color: Color(0xFF66758A),
+                              color: Color(0xFF8A8A93),
                             ),
                           ),
                           Text(
@@ -6726,7 +7427,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF182B4D),
+                              color: Color(0xFF15151A),
                             ),
                           ),
                         ],
@@ -6739,7 +7440,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                             'Subtotal Produk',
                             style: TextStyle(
                               fontSize: 13,
-                              color: Color(0xFF66758A),
+                              color: Color(0xFF8A8A93),
                             ),
                           ),
                           Text(
@@ -6747,7 +7448,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF182B4D),
+                              color: Color(0xFF15151A),
                             ),
                           ),
                         ],
@@ -6760,7 +7461,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                             'Ongkos Kirim',
                             style: TextStyle(
                               fontSize: 13,
-                              color: Color(0xFF66758A),
+                              color: Color(0xFF8A8A93),
                             ),
                           ),
                           Text(
@@ -6768,12 +7469,12 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF182B4D),
+                              color: Color(0xFF15151A),
                             ),
                           ),
                         ],
                       ),
-                      const Divider(height: 20),
+                      const Divider(height: 20, color: Color(0xFFF1F5F9)),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -6782,7 +7483,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF182B4D),
+                              color: Color(0xFF172554),
                             ),
                           ),
                           Text(
@@ -6790,7 +7491,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF011C6B),
+                              color: Color(0xFF2563EB),
                             ),
                           ),
                         ],
@@ -6817,7 +7518,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                                 width: 10,
                                 height: 10,
                                 decoration: const BoxDecoration(
-                                  color: Color(0xFF011C6B),
+                                  color: Color(0xFF2F6BFF),
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -6837,7 +7538,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                                           style: const TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.bold,
-                                            color: Color(0xFF182B4D),
+                                            color: Color(0xFF15151A),
                                           ),
                                         ),
                                         if (h.createdAt != null)
@@ -6887,7 +7588,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                     color: Colors.white,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.06),
+                        color: const Color(0xFF172554).withValues(alpha: 0.06),
                         blurRadius: 10,
                         offset: const Offset(0, -3),
                       ),
@@ -6922,7 +7623,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
           height: 48,
           child: ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFA85D00),
+              backgroundColor: const Color(0xFFE0A32E),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -6961,7 +7662,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
             height: 48,
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF16754B),
+                backgroundColor: const Color(0xFF2E9E5B),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -6997,7 +7698,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
             height: 48,
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF16754B),
+                backgroundColor: const Color(0xFF2E9E5B),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -7031,7 +7732,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
           height: 48,
           child: ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF011C6B),
+              backgroundColor: const Color(0xFF2F6BFF),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -7069,7 +7770,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
           height: 48,
           child: ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF955A0B),
+              backgroundColor: const Color(0xFF7B1FA2),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -7107,7 +7808,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
           height: 48,
           child: ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF16754B),
+              backgroundColor: const Color(0xFF2E9E5B),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -7151,7 +7852,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
               height: 48,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF011C6B),
+                  backgroundColor: const Color(0xFF2F6BFF),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -7175,8 +7876,8 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
               height: 48,
               child: OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF16754B),
-                  side: const BorderSide(color: Color(0xFF16754B), width: 1.5),
+                  foregroundColor: const Color(0xFF2E9E5B),
+                  side: const BorderSide(color: Color(0xFF2E9E5B), width: 1.5),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -7186,7 +7887,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                         width: 18,
                         height: 18,
                         child: CircularProgressIndicator(
-                          color: Color(0xFF16754B),
+                          color: Color(0xFF2E9E5B),
                           strokeWidth: 2,
                         ),
                       )
@@ -7212,7 +7913,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
         height: 48,
         child: ElevatedButton.icon(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF16754B),
+            backgroundColor: const Color(0xFF2E9E5B),
             foregroundColor: Colors.white,
             elevation: 1,
             shape: RoundedRectangleBorder(
@@ -7278,8 +7979,6 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
   }
 
   void _reload() {
-    PaintingBinding.instance.imageCache.clear();
-    PaintingBinding.instance.imageCache.clearLiveImages();
     if (mounted) {
       setState(() {
         _futureProduk = _api.fetchProduk();
@@ -7305,7 +8004,7 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFB42318),
+              backgroundColor: const Color(0xFFE14B4B),
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx, true),
@@ -7328,17 +8027,16 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('"${produk.nama}" berhasil dihapus.'),
-          backgroundColor: const Color(0xFF16754B),
+          backgroundColor: const Color(0xFF2E9E5B),
           behavior: SnackBarBehavior.floating,
         ),
       );
-      _reload();
     } on ConflictException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.message),
-          backgroundColor: const Color(0xFFB42318),
+          backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -7347,7 +8045,7 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(formatAppErrorMessage(e)),
-          backgroundColor: const Color(0xFFB42318),
+          backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -7357,11 +8055,10 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
   }
 
   Future<void> _bukaFormProduk({Product? produk}) async {
-    final hasil = await Navigator.push<bool>(
+    await Navigator.push<bool>(
       context,
       MaterialPageRoute(builder: (_) => FormProdukPage(produk: produk)),
     );
-    if (hasil == true) _reload();
   }
 
   @override
@@ -7391,7 +8088,7 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
         onPressed: _isDeleting ? null : () => _bukaFormProduk(),
         icon: const Icon(Icons.add),
         label: const Text('Tambah Produk'),
-        backgroundColor: const Color(0xFF011C6B),
+        backgroundColor: const Color(0xFF2F6BFF),
         foregroundColor: Colors.white,
       ),
       body: FutureBuilder<List<Product>>(
@@ -7411,7 +8108,7 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
                     const Icon(
                       Icons.error_outline,
                       size: 48,
-                      color: Color(0xFFB42318),
+                      color: Color(0xFFE14B4B),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -7419,13 +8116,13 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 14,
-                        color: Color(0xFF182B4D),
+                        color: Color(0xFF15151A),
                       ),
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF011C6B),
+                        backgroundColor: const Color(0xFF2F6BFF),
                         foregroundColor: Colors.white,
                       ),
                       icon: const Icon(Icons.refresh),
@@ -7458,7 +8155,7 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF182B4D),
+                        color: Color(0xFF15151A),
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -7490,7 +8187,7 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                     side: const BorderSide(
-                      color: Color(0xFFD8E3F5),
+                      color: Color(0xFFE6E6EC),
                       width: 0.8,
                     ),
                   ),
@@ -7524,7 +8221,7 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
                                           style: const TextStyle(
                                             fontSize: 15,
                                             fontWeight: FontWeight.bold,
-                                            color: Color(0xFF182B4D),
+                                            color: Color(0xFF15151A),
                                           ),
                                         ),
                                         const SizedBox(height: 2),
@@ -7532,7 +8229,7 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
                                           p.kategori,
                                           style: const TextStyle(
                                             fontSize: 12,
-                                            color: Color(0xFF66758A),
+                                            color: Color(0xFF8A8A93),
                                           ),
                                         ),
                                       ],
@@ -7556,7 +8253,7 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
                                           style: const TextStyle(
                                             fontSize: 15,
                                             fontWeight: FontWeight.bold,
-                                            color: Color(0xFF011C6B),
+                                            color: Color(0xFF2F6BFF),
                                           ),
                                         ),
                                         Text(
@@ -7571,7 +8268,7 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
                                             'Grosir: ${p.hargaGrosir.length} tier',
                                             style: const TextStyle(
                                               fontSize: 11,
-                                              color: Color(0xFF011C6B),
+                                              color: Color(0xFF2F6BFF),
                                             ),
                                           ),
                                       ],
@@ -7585,7 +8282,7 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
                                         icon: const Icon(
                                           Icons.edit_outlined,
                                           size: 20,
-                                          color: Color(0xFF011C6B),
+                                          color: Color(0xFF2F6BFF),
                                         ),
                                         tooltip: 'Edit Produk',
                                         onPressed: _isDeleting
@@ -7596,7 +8293,7 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
                                         icon: const Icon(
                                           Icons.delete_outline,
                                           size: 20,
-                                          color: Color(0xFFB42318),
+                                          color: Color(0xFFE14B4B),
                                         ),
                                         tooltip: 'Hapus Produk',
                                         onPressed: _isDeleting
@@ -7626,7 +8323,7 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
     if (!p.tersedia) {
       return _adminBadge(
         'Nonaktif',
-        const Color(0xFFF5F8FF),
+        const Color(0xFFF5F5F7),
         Colors.grey.shade400,
         Colors.grey.shade700,
       );
@@ -7634,24 +8331,24 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
     if (p.preOrder) {
       return _adminBadge(
         'Pre-Order',
-        const Color(0xFFFFF2D6),
-        const Color(0xFFA85D00),
-        const Color(0xFFA85D00),
+        const Color(0xFFFFF3D6),
+        const Color(0xFFE0A32E),
+        const Color(0xFF946200),
       );
     }
     if (p.stok == 0) {
       return _adminBadge(
         'Stok Habis',
-        const Color(0xFFFDE8E7),
-        const Color(0xFFB42318),
-        const Color(0xFFB42318),
+        const Color(0xFFFFEBEB),
+        const Color(0xFFE14B4B),
+        const Color(0xFFB42323),
       );
     }
     return _adminBadge(
       'Aktif',
-      const Color(0xFFE7F6ED),
-      const Color(0xFF16754B),
-      const Color(0xFF16754B),
+      const Color(0xFFEBF8EE),
+      const Color(0xFF2E9E5B),
+      const Color(0xFF2E9E5B),
     );
   }
 
@@ -7726,16 +8423,41 @@ class _FormProdukPageState extends State<FormProdukPage> {
 
   bool get _isEditMode => widget.produk != null;
 
+  String get _selectedImageSizeLabel {
+    if (_selectedImageBytes == null) return '';
+    final bytes = _selectedImageBytes!.lengthInBytes;
+    if (bytes >= 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
+    }
+    return '${(bytes / 1024).round()} KB';
+  }
+
   Future<void> _pickImage() async {
     try {
       final picked = await _imagePicker.pickImage(
         source: ImageSource.gallery,
         maxWidth: 1920,
         maxHeight: 1920,
-        imageQuality: 85,
+        imageQuality: 80,
       );
       if (picked != null) {
         final bytes = await picked.readAsBytes();
+        if (bytes.lengthInBytes > 2 * 1024 * 1024) {
+          final sizeMb = (bytes.lengthInBytes / (1024 * 1024)).toStringAsFixed(
+            2,
+          );
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Ukuran foto ($sizeMb MB) melebihi batas maksimal 2 MB. Silakan pilih gambar lain.',
+              ),
+              backgroundColor: const Color(0xFFE14B4B),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
         setState(() {
           _selectedImageFile = picked;
           _selectedImageBytes = bytes;
@@ -7829,7 +8551,7 @@ class _FormProdukPageState extends State<FormProdukPage> {
             content: Text(
               'Tier grosir ke-${i + 1}: min kuantitas dan harga wajib diisi.',
             ),
-            backgroundColor: const Color(0xFFB42318),
+            backgroundColor: const Color(0xFFE14B4B),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -7843,7 +8565,7 @@ class _FormProdukPageState extends State<FormProdukPage> {
             content: Text(
               'Tier grosir ke-${i + 1}: min kuantitas harus angka >= 2.',
             ),
-            backgroundColor: const Color(0xFFB42318),
+            backgroundColor: const Color(0xFFE14B4B),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -7855,7 +8577,7 @@ class _FormProdukPageState extends State<FormProdukPage> {
             content: Text(
               'Tier grosir ke-${i + 1}: harga satuan harus angka >= 1.',
             ),
-            backgroundColor: const Color(0xFFB42318),
+            backgroundColor: const Color(0xFFE14B4B),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -7920,7 +8642,7 @@ class _FormProdukPageState extends State<FormProdukPage> {
                 ? 'Produk "${payload['nama']}" berhasil diperbarui.'
                 : 'Produk "${payload['nama']}" berhasil ditambahkan.',
           ),
-          backgroundColor: const Color(0xFF16754B),
+          backgroundColor: const Color(0xFF2E9E5B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -7943,16 +8665,16 @@ class _FormProdukPageState extends State<FormProdukPage> {
           content: Text(
             msg.isNotEmpty ? 'Validasi gagal: $msg' : formatAppErrorMessage(e),
           ),
-          backgroundColor: const Color(0xFFB42318),
+          backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
-    } on RequestTimeoutException {
+    } on RequestTimeoutException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Koneksi timeout. Silakan coba lagi.'),
-          backgroundColor: Color(0xFFB42318),
+        SnackBar(
+          content: Text('Gagal menyimpan produk: ${e.message}'),
+          backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -7961,7 +8683,7 @@ class _FormProdukPageState extends State<FormProdukPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(formatAppErrorMessage(e)),
-          backgroundColor: const Color(0xFFB42318),
+          backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -7970,7 +8692,7 @@ class _FormProdukPageState extends State<FormProdukPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(formatAppErrorMessage(e)),
-          backgroundColor: const Color(0xFFB42318),
+          backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -8150,50 +8872,44 @@ class _FormProdukPageState extends State<FormProdukPage> {
               _sectionCard(
                 child: Column(
                   children: [
-                    Material(
-                      color: Colors.transparent,
-                      child: SwitchListTile(
-                        title: const Text(
-                          'Produk Tersedia / Aktif',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
+                    SwitchListTile(
+                      title: const Text(
+                        'Produk Tersedia / Aktif',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                         ),
-                        subtitle: Text(
-                          _tersedia
-                              ? 'Produk ini tampil dan bisa dibeli pelanggan'
-                              : 'Produk ini disembunyikan dari pelanggan',
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        value: _tersedia,
-                        activeThumbColor: const Color(0xFF011C6B),
-                        contentPadding: EdgeInsets.zero,
-                        onChanged: (val) => setState(() => _tersedia = val),
                       ),
+                      subtitle: Text(
+                        _tersedia
+                            ? 'Produk ini tampil dan bisa dibeli pelanggan'
+                            : 'Produk ini disembunyikan dari pelanggan',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      value: _tersedia,
+                      activeThumbColor: const Color(0xFF2F6BFF),
+                      contentPadding: EdgeInsets.zero,
+                      onChanged: (val) => setState(() => _tersedia = val),
                     ),
                     const Divider(height: 8),
-                    Material(
-                      color: Colors.transparent,
-                      child: SwitchListTile(
-                        title: const Text(
-                          'Mode Pre-Order',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
+                    SwitchListTile(
+                      title: const Text(
+                        'Mode Pre-Order',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                         ),
-                        subtitle: Text(
-                          _preOrder
-                              ? 'Pelanggan bisa memesan meski stok 0'
-                              : 'Hanya bisa dibeli jika stok tersedia',
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        value: _preOrder,
-                        activeThumbColor: const Color(0xFFA85D00),
-                        contentPadding: EdgeInsets.zero,
-                        onChanged: (val) => setState(() => _preOrder = val),
                       ),
+                      subtitle: Text(
+                        _preOrder
+                            ? 'Pelanggan bisa memesan meski stok 0'
+                            : 'Hanya bisa dibeli jika stok tersedia',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      value: _preOrder,
+                      activeThumbColor: const Color(0xFFE0A32E),
+                      contentPadding: EdgeInsets.zero,
+                      onChanged: (val) => setState(() => _preOrder = val),
                     ),
                     if (_preOrder) ...[
                       const SizedBox(height: 10),
@@ -8242,7 +8958,7 @@ class _FormProdukPageState extends State<FormProdukPage> {
                     ),
                   ),
                   TextButton.icon(
-                    onPressed: _tambahTierGrosir,
+                    onPressed: _isSubmitting ? null : _tambahTierGrosir,
                     icon: const Icon(Icons.add, size: 16),
                     label: const Text('Tambah Tier'),
                   ),
@@ -8258,7 +8974,7 @@ class _FormProdukPageState extends State<FormProdukPage> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0xFFD8E3F5),
+                      color: const Color(0xFFE6E6EC),
                       width: 0.8,
                     ),
                   ),
@@ -8291,7 +9007,7 @@ class _FormProdukPageState extends State<FormProdukPage> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0xFFC5D8FF),
+                      color: const Color(0xFFBDD3FF),
                       width: 0.8,
                     ),
                   ),
@@ -8328,10 +9044,12 @@ class _FormProdukPageState extends State<FormProdukPage> {
                       IconButton(
                         icon: const Icon(
                           Icons.remove_circle_outline,
-                          color: Color(0xFFB42318),
+                          color: Color(0xFFE14B4B),
                         ),
                         tooltip: 'Hapus tier ini',
-                        onPressed: () => _hapusTierGrosir(i),
+                        onPressed: _isSubmitting
+                            ? null
+                            : () => _hapusTierGrosir(i),
                       ),
                     ],
                   ),
@@ -8340,13 +9058,55 @@ class _FormProdukPageState extends State<FormProdukPage> {
 
               const SizedBox(height: 24),
 
+              // === Indikator Progres Simpan/Unggah ===
+              if (_isSubmitting) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                  ),
+                  child: Row(
+                    children: [
+                      const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFF2563EB),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _selectedImageBytes != null
+                              ? 'Sedang mengunggah foto & menyimpan data produk (maks. 60 dtk)...'
+                              : 'Sedang menyimpan data produk...',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF1E40AF),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+
               // === Tombol Submit ===
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF182B4D),
+                    backgroundColor: const Color(0xFF0D0D12),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -8354,13 +9114,28 @@ class _FormProdukPageState extends State<FormProdukPage> {
                   ),
                   onPressed: _isSubmitting ? null : _submit,
                   child: _isSubmitting
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
+                      ? Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              _isEditMode
+                                  ? 'Menyimpan Perubahan...'
+                                  : 'Menambahkan Produk...',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         )
                       : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -8433,9 +9208,11 @@ class _FormProdukPageState extends State<FormProdukPage> {
                             color: const Color(0xFF2E9E5B),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Text(
-                            'Gambar Baru Dipilih',
-                            style: TextStyle(
+                          child: Text(
+                            _selectedImageSizeLabel.isNotEmpty
+                                ? 'Gambar Baru ($_selectedImageSizeLabel)'
+                                : 'Gambar Baru Dipilih',
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
@@ -8590,14 +9367,14 @@ class _FormProdukPageState extends State<FormProdukPage> {
   Widget _sectionTitle(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: const Color(0xFF011C6B)),
+        Icon(icon, size: 18, color: const Color(0xFF2F6BFF)),
         const SizedBox(width: 8),
         Text(
           title,
           style: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF182B4D),
+            color: Color(0xFF15151A),
           ),
         ),
       ],
@@ -8605,15 +9382,13 @@ class _FormProdukPageState extends State<FormProdukPage> {
   }
 
   Widget _sectionCard({required Widget child}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD8E3F5), width: 0.8),
+        side: const BorderSide(color: Color(0xFFE6E6EC), width: 0.8),
       ),
-      child: child,
+      child: Padding(padding: const EdgeInsets.all(16), child: child),
     );
   }
 }
@@ -8675,7 +9450,7 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF16754B),
+              backgroundColor: const Color(0xFF2E9E5B),
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx, true),
@@ -8701,7 +9476,7 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
           content: Text(
             'Status pesanan ${order.nomorPesanan} berhasil diubah ke "$statusBaru".',
           ),
-          backgroundColor: const Color(0xFF16754B),
+          backgroundColor: const Color(0xFF2E9E5B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -8711,7 +9486,7 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_formatErrorMessage(e)),
-          backgroundColor: const Color(0xFFB42318),
+          backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -8743,10 +9518,10 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
       child: ChoiceChip(
         label: Text('$label ($count)'),
         selected: isSelected,
-        selectedColor: const Color(0xFF011C6B),
-        backgroundColor: const Color(0xFFEAF1FF),
+        selectedColor: const Color(0xFF2F6BFF),
+        backgroundColor: const Color(0xFFEDEDF2),
         labelStyle: TextStyle(
-          color: isSelected ? Colors.white : const Color(0xFF182B4D),
+          color: isSelected ? Colors.white : const Color(0xFF15151A),
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           fontSize: 12,
         ),
@@ -8799,7 +9574,7 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
                     const Icon(
                       Icons.error_outline,
                       size: 48,
-                      color: Color(0xFFB42318),
+                      color: Color(0xFFE14B4B),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -8807,13 +9582,13 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 14,
-                        color: Color(0xFF182B4D),
+                        color: Color(0xFF15151A),
                       ),
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF011C6B),
+                        backgroundColor: const Color(0xFF2F6BFF),
                         foregroundColor: Colors.white,
                       ),
                       icon: const Icon(Icons.refresh),
@@ -8837,7 +9612,7 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
                     const Icon(
                       Icons.inbox_outlined,
                       size: 64,
-                      color: Color(0xFF66758A),
+                      color: Color(0xFF8A8A93),
                     ),
                     const SizedBox(height: 16),
                     const Text(
@@ -8845,14 +9620,14 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF182B4D),
+                        color: Color(0xFF15151A),
                       ),
                     ),
                     const SizedBox(height: 8),
                     const Text(
                       'Seluruh pesanan dari pembeli akan tercatat di halaman ini.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 13, color: Color(0xFF66758A)),
+                      style: TextStyle(fontSize: 13, color: Color(0xFF8A8A93)),
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
@@ -8938,7 +9713,7 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
                   ),
                 ),
               ),
-              const Divider(height: 1, color: Color(0xFFD8E3F5)),
+              const Divider(height: 1, color: Color(0xFFE6E6EC)),
 
               // 2. Daftar Kartu Pesanan
               Expanded(
@@ -8948,7 +9723,7 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
                           'Tidak ada pesanan dengan status "$_selectedStatus".',
                           style: const TextStyle(
                             fontSize: 14,
-                            color: Color(0xFF66758A),
+                            color: Color(0xFF8A8A93),
                           ),
                         ),
                       )
@@ -8968,9 +9743,9 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
                                 color: isMenungguKonfirmasi
-                                    ? const Color(0xFFA85D00)
+                                    ? const Color(0xFFE0A32E)
                                           .withValues(alpha: 0.6)
-                                    : const Color(0xFFD8E3F5),
+                                    : const Color(0xFFE6E6EC),
                                 width: isMenungguKonfirmasi ? 1.4 : 0.8,
                               ),
                               boxShadow: [
@@ -9016,7 +9791,7 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
                                               style: const TextStyle(
                                                 fontSize: 15,
                                                 fontWeight: FontWeight.bold,
-                                                color: Color(0xFF182B4D),
+                                                color: Color(0xFF15151A),
                                               ),
                                             ),
                                           ),
@@ -9031,7 +9806,7 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
                                           const Icon(
                                             Icons.person_outline,
                                             size: 16,
-                                            color: Color(0xFF66758A),
+                                            color: Color(0xFF8A8A93),
                                           ),
                                           const SizedBox(width: 6),
                                           Text(
@@ -9039,7 +9814,7 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
                                             style: const TextStyle(
                                               fontSize: 13,
                                               fontWeight: FontWeight.w600,
-                                              color: Color(0xFF182B4D),
+                                              color: Color(0xFF15151A),
                                             ),
                                           ),
                                           const Spacer(),
@@ -9047,14 +9822,14 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
                                             const Icon(
                                               Icons.access_time,
                                               size: 14,
-                                              color: Color(0xFF66758A),
+                                              color: Color(0xFF8A8A93),
                                             ),
                                             const SizedBox(width: 4),
                                             Text(
                                               order.createdAt!,
                                               style: const TextStyle(
                                                 fontSize: 11,
-                                                color: Color(0xFF66758A),
+                                                color: Color(0xFF8A8A93),
                                               ),
                                             ),
                                           ],
@@ -9068,7 +9843,7 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
                                           const Icon(
                                             Icons.payment_outlined,
                                             size: 16,
-                                            color: Color(0xFF66758A),
+                                            color: Color(0xFF8A8A93),
                                           ),
                                           const SizedBox(width: 6),
                                           Text(
@@ -9077,7 +9852,7 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
                                                 .toUpperCase(),
                                             style: const TextStyle(
                                               fontSize: 12,
-                                              color: Color(0xFF66758A),
+                                              color: Color(0xFF8A8A93),
                                             ),
                                           ),
                                           const Spacer(),
@@ -9086,7 +9861,7 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
                                             style: const TextStyle(
                                               fontSize: 16,
                                               fontWeight: FontWeight.bold,
-                                              color: Color(0xFF011C6B),
+                                              color: Color(0xFF2F6BFF),
                                             ),
                                           ),
                                         ],
@@ -9097,7 +9872,7 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
                                         const SizedBox(height: 14),
                                         const Divider(
                                           height: 1,
-                                          color: Color(0xFFD8E3F5),
+                                          color: Color(0xFFE6E6EC),
                                         ),
                                         const SizedBox(height: 12),
                                         Row(
@@ -9106,7 +9881,7 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
                                               child: ElevatedButton.icon(
                                                 style: ElevatedButton.styleFrom(
                                                   backgroundColor: const Color(
-                                                    0xFF16754B,
+                                                    0xFF2E9E5B,
                                                   ),
                                                   foregroundColor: Colors.white,
                                                   padding:
@@ -9158,7 +9933,7 @@ class _KelolaPesananPageState extends State<KelolaPesananPage> {
                                             OutlinedButton(
                                               style: OutlinedButton.styleFrom(
                                                 foregroundColor: const Color(
-                                                  0xFF011C6B,
+                                                  0xFF2F6BFF,
                                                 ),
                                                 padding:
                                                     const EdgeInsets.symmetric(
