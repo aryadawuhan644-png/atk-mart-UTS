@@ -1564,7 +1564,8 @@ class _ProductStatusBadge extends StatelessWidget {
 
 // ---------------------------------------------------------------------------
 // Shell Navigasi Pembeli (PembeliShellPage)
-// Menyatukan Katalog, Pesanan Saya, Riwayat, dan Keranjang dalam bottom bar.
+// Menyatukan Katalog, Pesanan Saya, dan Riwayat dalam bottom bar.
+// Akses keranjang tersedia melalui ikon di AppBar tiap halaman.
 // ---------------------------------------------------------------------------
 class PembeliShellPage extends StatefulWidget {
   const PembeliShellPage({super.key});
@@ -1576,7 +1577,7 @@ class PembeliShellPage extends StatefulWidget {
 class _PembeliShellPageState extends State<PembeliShellPage> {
   int _currentIndex = 0;
   final Set<int> _visited = {0};
-  final List<int> _refreshTicks = [0, 0, 0, 0];
+  final List<int> _refreshTicks = [0, 0, 0];
 
   @override
   void initState() {
@@ -1607,8 +1608,6 @@ class _PembeliShellPageState extends State<PembeliShellPage> {
         return PesananSayaPage(key: key, embedded: true);
       case 2:
         return RiwayatPesananPage(key: key, embedded: true);
-      case 3:
-        return KeranjangPage(key: key, embedded: true);
       default:
         return const SizedBox.shrink();
     }
@@ -1619,7 +1618,7 @@ class _PembeliShellPageState extends State<PembeliShellPage> {
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
-        children: List.generate(4, _buildTab),
+        children: List.generate(3, _buildTab),
       ),
       bottomNavigationBar: NavigationBar(
         backgroundColor: Colors.white,
@@ -1644,15 +1643,6 @@ class _PembeliShellPageState extends State<PembeliShellPage> {
             icon: Icon(Icons.history_rounded),
             selectedIcon: Icon(Icons.history),
             label: 'Riwayat',
-          ),
-          NavigationDestination(
-            icon: AnimatedCartBadgeIcon(
-              icon: Icons.shopping_cart_outlined,
-            ),
-            selectedIcon: AnimatedCartBadgeIcon(
-              icon: Icons.shopping_cart,
-            ),
-            label: 'Keranjang',
           ),
         ],
       ),
@@ -1739,6 +1729,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
     try {
       await _api.addKeranjang(produkId: p.id, jumlah: 1);
       StateKeranjang.increment(1);
+      StateKeranjang.lastAddedProdukId = p.id;
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -2849,6 +2840,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
 
       if (!mounted) return;
       StateKeranjang.increment(_jumlah);
+      StateKeranjang.lastAddedProdukId = product.id;
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -2981,6 +2973,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
 
     try {
       await _api.addKeranjang(produkId: product.id, jumlah: _jumlah);
+      StateKeranjang.lastAddedProdukId = product.id;
 
       final cartData = await _api.fetchKeranjang();
       final matchingItem = cartData.items.firstWhere(
@@ -3720,6 +3713,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
   late Future<KeranjangData> _futureKeranjang;
   bool _isProcessing = false;
   Set<int>? _selectedItemIds;
+  int? _appliedLastAddedProdukId;
 
   @override
   void initState() {
@@ -3731,6 +3725,20 @@ class _KeranjangPageState extends State<KeranjangPage> {
     setState(() {
       _futureKeranjang = _api.fetchKeranjang();
     });
+  }
+
+  /// Menaruh produk terakhir yang ditambahkan di paling atas daftar.
+  List<CartItem> _susunItems(List<CartItem> items) {
+    final lastAdded = StateKeranjang.lastAddedProdukId;
+    if (lastAdded == null) return items;
+    final sorted = List<CartItem>.from(items);
+    sorted.sort((a, b) {
+      final aBaru = a.produkId == lastAdded;
+      final bBaru = b.produkId == lastAdded;
+      if (aBaru == bBaru) return a.id.compareTo(b.id);
+      return aBaru ? -1 : 1;
+    });
+    return sorted;
   }
 
   String _formatErrorMessage(Object error) => formatAppErrorMessage(error);
@@ -3936,7 +3944,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
           }
 
           final cartData = snapshot.data;
-          final items = cartData?.items ?? [];
+          final items = _susunItems(cartData?.items ?? []);
 
           if (items.isEmpty) {
             return Center(
@@ -3985,10 +3993,19 @@ class _KeranjangPageState extends State<KeranjangPage> {
             );
           }
 
-          // Sinkronisasi pilihan item
+          // Sinkronisasi pilihan item: hanya produk terakhir yang ditambahkan
+          // yang tercentang secara default.
           final itemIds = items.map((e) => e.id).toSet();
-          if (_selectedItemIds == null) {
-            _selectedItemIds = Set.from(itemIds);
+          final lastAdded = StateKeranjang.lastAddedProdukId;
+          if (_selectedItemIds == null ||
+              lastAdded != _appliedLastAddedProdukId) {
+            _selectedItemIds = lastAdded == null
+                ? <int>{}
+                : items
+                      .where((i) => i.produkId == lastAdded)
+                      .map((i) => i.id)
+                      .toSet();
+            _appliedLastAddedProdukId = lastAdded;
           } else {
             _selectedItemIds = _selectedItemIds!.intersection(itemIds);
           }
@@ -5740,6 +5757,13 @@ class _PesananSayaPageState extends State<PesananSayaPage> {
               },
             ),
           IconButton(
+            icon: const AnimatedCartBadgeIcon(),
+            tooltip: 'Keranjang',
+            onPressed: () {
+              AppNav.push(context, const KeranjangPage());
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Segarkan',
             onPressed: _reload,
@@ -6251,6 +6275,13 @@ class _RiwayatPesananPageState extends State<RiwayatPesananPage> {
                 );
               },
             ),
+          IconButton(
+            icon: const AnimatedCartBadgeIcon(),
+            tooltip: 'Keranjang',
+            onPressed: () {
+              AppNav.push(context, const KeranjangPage());
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Segarkan',

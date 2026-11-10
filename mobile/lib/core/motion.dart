@@ -42,6 +42,10 @@ class MotionConstants {
 class StateKeranjang {
   static final ValueNotifier<int> countNotifier = ValueNotifier<int>(0);
 
+  /// Produk terakhir yang berhasil ditambahkan ke keranjang (produkId).
+  /// Dipakai keranjang untuk hanya mencentang item terbaru.
+  static int? lastAddedProdukId;
+
   static int get count => countNotifier.value;
 
   static void updateCountFromData(KeranjangData data) {
@@ -72,6 +76,7 @@ class StateKeranjang {
 
   static void reset() {
     countNotifier.value = 0;
+    lastAddedProdukId = null;
   }
 }
 
