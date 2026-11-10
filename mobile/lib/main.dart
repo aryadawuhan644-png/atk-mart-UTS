@@ -8192,7 +8192,7 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
   Widget _buildProdukStatusBadge(Product p) {
     if (!p.tersedia) {
       return _adminBadge(
-        'Nonaktif',
+        'Tidak Tersedia',
         const Color(0xFFF5F5F7),
         Colors.grey.shade400,
         Colors.grey.shade700,
@@ -8200,7 +8200,7 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
     }
     if (p.preOrder) {
       return _adminBadge(
-        'Pre-Order',
+        'Preorder',
         const Color(0xFFFFF3D6),
         const Color(0xFFE0A32E),
         const Color(0xFF946200),
@@ -8215,7 +8215,7 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
       );
     }
     return _adminBadge(
-      'Aktif',
+      'Tersedia',
       const Color(0xFFEBF8EE),
       const Color(0xFF2E9E5B),
       const Color(0xFF2E9E5B),
