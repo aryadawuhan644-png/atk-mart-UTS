@@ -477,6 +477,18 @@ class LayananApi {
   );
 
   // ---------------------------------------------------------------------------
+  // 5b. DELETE /produk/{id}/gambar (pengelola only)
+  // Menghapus gambar produk yang sudah di-upload.
+  // ---------------------------------------------------------------------------
+  Future<void> hapusGambarProduk(int id) => _request<void>(
+    () => _client.delete(
+      _uri('/produk/$id/gambar'),
+      headers: ApiConfig.pengelolaHeaders(),
+    ),
+    (_) {},
+  );
+
+  // ---------------------------------------------------------------------------
   // 6. GET /kurir
   // Without query: data = {kurir:[], wilayah:[], tarif:[]}
   // With ?wilayah_id=X: data = {wilayah:{...}, kurir:[{kurir_id,nama,deskripsi,tarif}]}

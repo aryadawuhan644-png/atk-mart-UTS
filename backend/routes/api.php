@@ -26,6 +26,7 @@ Route::middleware(['auth.statis'])->group(function () {
         Route::post('/produk', [ProdukController::class, 'store']);
         Route::put('/produk/{id}', [ProdukController::class, 'update']);
         Route::delete('/produk/{id}', [ProdukController::class, 'destroy']);
+        Route::delete('/produk/{id}/gambar', [ProdukController::class, 'hapusGambar']);
     });
 
     // Pembeli: Keranjang & Checkout

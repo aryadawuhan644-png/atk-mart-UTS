@@ -8284,6 +8284,8 @@ class _FormProdukPageState extends State<FormProdukPage> {
   final ImagePicker _imagePicker = ImagePicker();
 
   bool _isSubmitting = false;
+  bool _isDeletingGambar = false;
+  bool _gambarDihapus = false;
   Map<String, String> _fieldErrors = {};
 
   static const List<String> _kategoriOptions = [
@@ -8350,6 +8352,64 @@ class _FormProdukPageState extends State<FormProdukPage> {
       _selectedImageFile = null;
       _selectedImageBytes = null;
     });
+  }
+
+  Future<void> _hapusGambarProduk() async {
+    if (_isDeletingGambar || widget.produk == null) return;
+
+    final konfirmasi = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus gambar ini?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE14B4B),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+
+    if (konfirmasi != true || !mounted) return;
+
+    setState(() => _isDeletingGambar = true);
+
+    try {
+      await _api.hapusGambarProduk(widget.produk!.id);
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+      produkUpdateNotifier.value++;
+      if (!mounted) return;
+      setState(() {
+        _gambarDihapus = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gambar produk berhasil dihapus.'),
+          backgroundColor: Color(0xFF2E9E5B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(formatAppErrorMessage(e)),
+          backgroundColor: const Color(0xFFE14B4B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isDeletingGambar = false);
+    }
   }
 
   @override
@@ -9042,6 +9102,7 @@ class _FormProdukPageState extends State<FormProdukPage> {
     final bool hasNewImage = _selectedImageBytes != null;
     final bool hasExistingImage =
         _isEditMode &&
+        !_gambarDihapus &&
         widget.produk?.gambar != null &&
         widget.produk!.gambar!.isNotEmpty;
 
@@ -9151,6 +9212,7 @@ class _FormProdukPageState extends State<FormProdukPage> {
                           ),
                         ),
                       ),
+
                     ],
                   ),
                 ),
@@ -9160,13 +9222,43 @@ class _FormProdukPageState extends State<FormProdukPage> {
                   style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
                 const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    label: const Text('Ganti Gambar dari Galeri'),
-                    onPressed: _isSubmitting ? null : _pickImage,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        label: const Text('Ganti Gambar dari Galeri'),
+                        onPressed: (_isSubmitting || _isDeletingGambar)
+                            ? null
+                            : _pickImage,
+                      ),
+                    ),
+                    if (SessionPengguna.isPengelola) ...[
+                      const SizedBox(width: 8),
+                      _isDeletingGambar
+                          ? const SizedBox(
+                              width: 40,
+                              height: 40,
+                              child: Padding(
+                                padding: EdgeInsets.all(10),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation(
+                                    Color(0xFFE14B4B),
+                                  ),
+                                ),
+                              ),
+                            )
+                          : IconButton(
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                color: Color(0xFFE14B4B),
+                              ),
+                              tooltip: 'Hapus gambar',
+                              onPressed: _isSubmitting ? null : _hapusGambarProduk,
+                            ),
+                    ],
+                  ],
                 ),
               ] else ...[
                 // Belum ada gambar

@@ -355,4 +355,40 @@ class ProdukController extends Controller
             'data' => null,
         ], 200);
     }
+
+    /**
+     * Endpoint: DELETE /api/produk/{id}/gambar
+     * Menghapus gambar produk (khusus pengelola).
+     */
+    public function hapusGambar(int $id): JsonResponse
+    {
+        $produk = Produk::with('hargaGrosir')->find($id);
+
+        if (!$produk) {
+            return response()->json([
+                'status' => 'gagal',
+                'code' => '404',
+                'message' => 'Produk tidak ditemukan',
+                'data' => null,
+            ], 404);
+        }
+
+        if ($produk->gambar) {
+            try {
+                Storage::disk('public')->delete($produk->gambar);
+            } catch (\Throwable $e) {
+                // Abaikan jika file fisik sudah tidak ada
+            }
+
+            $produk->gambar = null;
+            $produk->save();
+        }
+
+        return response()->json([
+            'status' => 'sukses',
+            'code' => '200',
+            'message' => 'Gambar produk berhasil dihapus',
+            'data' => self::formatProduk($produk->fresh('hargaGrosir')),
+        ], 200);
+    }
 }
