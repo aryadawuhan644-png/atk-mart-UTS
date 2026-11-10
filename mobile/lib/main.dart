@@ -1744,6 +1744,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
+          persist: false,
           content: Row(
             children: [
               const Icon(
@@ -2851,6 +2852,7 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
+          persist: false,
           content: Row(
             children: [
               const Icon(
