@@ -1673,6 +1673,15 @@ class ProdukListPage extends StatefulWidget {
 class _ProdukListPageState extends State<ProdukListPage> {
   final LayananApi _api = LayananApi();
   late Future<List<Product>> _futureProduk;
+  final ScrollController _produkScrollController = ScrollController();
+  final List<Product> _produkHalamanBerikutnya = <Product>[];
+  final Set<String> _halamanDiminta = <String>{};
+  int _currentPage = 0;
+  int _lastPage = 1;
+  int _queryVersion = 0;
+  bool _hasMorePages = false;
+  bool _isLoadingMore = false;
+  Object? _loadMoreError;
 
   final TextEditingController _searchController = TextEditingController();
   String _selectedKategori = 'Semua';
@@ -1795,26 +1804,115 @@ class _ProdukListPageState extends State<ProdukListPage> {
   @override
   void initState() {
     super.initState();
+    _produkScrollController.addListener(_onProdukScroll);
     _futureProduk = _fetchData();
     produkUpdateNotifier.addListener(_reload);
   }
 
   @override
   void dispose() {
+    _queryVersion++;
     produkUpdateNotifier.removeListener(_reload);
     _searchController.dispose();
+    _produkScrollController
+      ..removeListener(_onProdukScroll)
+      ..dispose();
     super.dispose();
   }
 
   /// Memanggil API server-side dengan query 'cari' dan filter 'kategori'
   Future<List<Product>> _fetchData() {
+    final requestVersion = ++_queryVersion;
+    _produkHalamanBerikutnya.clear();
+    _halamanDiminta.clear();
+    _currentPage = 0;
+    _lastPage = 1;
+    _hasMorePages = false;
+    _isLoadingMore = false;
+    _loadMoreError = null;
+
     final query = _searchController.text.trim();
     final cariParam = query.isNotEmpty ? query : null;
     final kategoriParam = _selectedKategori != 'Semua'
         ? _selectedKategori
         : null;
 
-    return _api.fetchProduk(cari: cariParam, kategori: kategoriParam);
+    return _api
+        .fetchProdukPaginated(
+          page: 1,
+          perPage: 10,
+          cari: cariParam,
+          kategori: kategoriParam,
+        )
+        .then((result) {
+          if (requestVersion == _queryVersion) {
+            _currentPage = result.currentPage;
+            _lastPage = result.lastPage;
+            _hasMorePages = result.hasMorePages;
+          }
+          return result.products;
+        });
+  }
+
+  void _onProdukScroll() {
+    if (_produkScrollController.hasClients &&
+        _produkScrollController.position.extentAfter < 300) {
+      _loadNextProdukPage();
+    }
+  }
+
+  Future<void> _loadNextProdukPage() async {
+    if (_isLoadingMore || !_hasMorePages || _currentPage >= _lastPage) {
+      return;
+    }
+
+    final requestVersion = _queryVersion;
+    final page = _currentPage + 1;
+    final requestKey = '$requestVersion:$page';
+    if (!_halamanDiminta.add(requestKey)) return;
+
+    final query = _searchController.text.trim();
+    final cariParam = query.isNotEmpty ? query : null;
+    final kategoriParam = _selectedKategori != 'Semua'
+        ? _selectedKategori
+        : null;
+    setState(() {
+      _isLoadingMore = true;
+      _loadMoreError = null;
+    });
+
+    try {
+      final result = await _api.fetchProdukPaginated(
+        page: page,
+        perPage: 10,
+        cari: cariParam,
+        kategori: kategoriParam,
+      );
+      if (!mounted || requestVersion != _queryVersion) return;
+
+      setState(() {
+        _produkHalamanBerikutnya.addAll(result.products);
+        _currentPage = result.currentPage;
+        _lastPage = result.lastPage;
+        _hasMorePages = result.hasMorePages;
+      });
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted &&
+            _produkScrollController.hasClients &&
+            _produkScrollController.position.extentAfter < 300) {
+          _loadNextProdukPage();
+        }
+      });
+    } catch (error) {
+      if (!mounted || requestVersion != _queryVersion) return;
+      setState(() => _loadMoreError = error);
+    } finally {
+      _halamanDiminta.remove(requestKey);
+      if (mounted && requestVersion == _queryVersion) {
+        setState(() => _isLoadingMore = false);
+      }
+    }
   }
 
   void _onSearchOrFilterChanged() {
@@ -2538,6 +2636,15 @@ class _ProdukListPageState extends State<ProdukListPage> {
                 }
 
                 final rawList = snapshot.data ?? [];
+                if (rawList.isNotEmpty) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted &&
+                        _produkScrollController.hasClients &&
+                        _produkScrollController.position.extentAfter < 300) {
+                      _loadNextProdukPage();
+                    }
+                  });
+                }
                 if (rawList.isEmpty) {
                   return Center(
                     child: Padding(
@@ -2591,7 +2698,10 @@ class _ProdukListPageState extends State<ProdukListPage> {
                 }
 
                 // Salin list produk agar data sumber asli tidak termutasi
-                final List<Product> produkList = List<Product>.from(rawList);
+                final List<Product> produkList = [
+                  ...rawList,
+                  ..._produkHalamanBerikutnya,
+                ];
                 if (_selectedSort == 'Harga Termurah') {
                   produkList.sort((a, b) => a.harga.compareTo(b.harga));
                 } else if (_selectedSort == 'Harga Termahal') {
@@ -2613,6 +2723,7 @@ class _ProdukListPageState extends State<ProdukListPage> {
                           crossAxisCount;
 
                       return GridView.builder(
+                        controller: _produkScrollController,
                         padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: crossAxisCount,
@@ -2620,8 +2731,27 @@ class _ProdukListPageState extends State<ProdukListPage> {
                           mainAxisSpacing: 12,
                           mainAxisExtent: tileWidth + 190,
                         ),
-                        itemCount: produkList.length,
+                        itemCount:
+                            produkList.length +
+                            (_isLoadingMore || _loadMoreError != null ? 1 : 0),
                         itemBuilder: (context, index) {
+                          if (index >= produkList.length) {
+                            if (_loadMoreError != null) {
+                              return Center(
+                                child: TextButton.icon(
+                                  onPressed: _loadNextProdukPage,
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Coba muat lagi'),
+                                ),
+                              );
+                            }
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                color: Color(0xFF2563EB),
+                              ),
+                            );
+                          }
+
                           final produk = produkList[index];
                           return StaggeredListItem(
                             index: index,

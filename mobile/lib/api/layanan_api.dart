@@ -59,6 +59,24 @@ class ServerException extends ApiException {
   const ServerException([super.message = 'Terjadi kendala pada server (500). Silakan coba beberapa saat lagi.']);
 }
 
+class ProdukPage {
+  final List<Product> products;
+  final int currentPage;
+  final int perPage;
+  final int total;
+  final int lastPage;
+  final bool hasMorePages;
+
+  const ProdukPage({
+    required this.products,
+    required this.currentPage,
+    required this.perPage,
+    required this.total,
+    required this.lastPage,
+    required this.hasMorePages,
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Laravel standard JSON envelope parser
 // ---------------------------------------------------------------------------
@@ -69,6 +87,7 @@ class _LaravelResponse {
   final String message;
   final dynamic data;
   final Map<String, dynamic>? errors;
+  final Map<String, dynamic>? body;
 
   const _LaravelResponse({
     required this.status,
@@ -76,6 +95,7 @@ class _LaravelResponse {
     required this.message,
     required this.data,
     this.errors,
+    this.body,
   });
 
   factory _LaravelResponse.parse(String body, [int fallbackStatusCode = 0]) {
@@ -87,6 +107,7 @@ class _LaravelResponse {
         message: json['message'] as String? ?? '',
         data: json['data'],
         errors: json['errors'] is Map ? (json['errors'] as Map).cast<String, dynamic>() : null,
+        body: json,
       );
     } catch (_) {
       return _LaravelResponse(
@@ -98,6 +119,7 @@ class _LaravelResponse {
                 ? 'Data yang diminta tidak ditemukan (404).'
                 : 'Respon dari server tidak valid.'),
         data: null,
+        body: null,
       );
     }
   }
@@ -140,52 +162,80 @@ class LayananApi {
         : uri;
   }
 
+  
   /// Execute [fn], parse the Laravel envelope, return [data] via [parser].
   Future<T> _request<T>(
     Future<http.Response> Function() fn,
     T Function(dynamic data) parser, {
     Duration? timeout,
+  }) =>
+      _requestResponse(
+        fn,
+        (response) => parser(response.data),
+        timeout: timeout,
+      );
+
+  Future<T> _requestResponse<T>(
+    Future<http.Response> Function() fn,
+    T Function(_LaravelResponse response) parser, {
+    Duration? timeout,
   }) async {
     final effectiveTimeout = timeout ?? _timeout;
+
     http.Response response;
     try {
       response = await fn().timeout(effectiveTimeout);
     } on TimeoutException {
       final sec = effectiveTimeout.inSeconds;
       throw RequestTimeoutException(
-          'Permintaan ke server melebihi batas waktu ($sec detik). Silakan coba lagi.');
+        'Permintaan ke server melebihi batas waktu ($sec detik). Silakan coba lagi.',
+      );
     } catch (_) {
       throw const NetworkException(
-          'Tidak dapat terhubung ke server ATK Mart. Periksa koneksi internet Anda.');
+        'Tidak dapat terhubung ke server ATK Mart. Periksa koneksi internet Anda.',
+      );
     }
 
     final env = _LaravelResponse.parse(response.body, response.statusCode);
     final httpCode = int.tryParse(env.code) ?? response.statusCode;
 
     if (env.isSuccess) {
-      return parser(env.data);
+      return parser(env);
     }
 
     switch (httpCode) {
       case 401:
         throw UnauthorizedException(
-            env.message.isNotEmpty ? env.message : 'Sesi tidak sah. Token autentikasi tidak valid atau belum diatur.');
+          env.message.isNotEmpty
+              ? env.message
+              : 'Sesi tidak sah. Token autentikasi tidak valid atau belum diatur.',
+        );
       case 403:
         throw ForbiddenException(
-            env.message.isNotEmpty ? env.message : 'Akses ditolak: Anda tidak memiliki wewenang untuk tindakan ini.');
+          env.message.isNotEmpty
+              ? env.message
+              : 'Akses ditolak: Anda tidak memiliki wewenang untuk tindakan ini.',
+        );
       case 404:
         throw NotFoundException(
-            env.message.isNotEmpty ? env.message : 'Data yang diminta tidak ditemukan di server (404).');
+          env.message.isNotEmpty
+              ? env.message
+              : 'Data yang diminta tidak ditemukan di server (404).',
+        );
       case 409:
         throw ConflictException(env.message);
       case 422:
         throw ValidationException(env.message, env.errors ?? {});
       case 500:
         throw const ServerException(
-            'Terjadi kendala pada server (500). Silakan coba beberapa saat lagi.');
+          'Terjadi kendala pada server (500). Silakan coba beberapa saat lagi.',
+        );
       default:
         throw ApiException(
-            env.message.isNotEmpty ? env.message : 'Terjadi kendala dengan kode status $httpCode');
+          env.message.isNotEmpty
+              ? env.message
+              : 'Terjadi kendala dengan kode status $httpCode',
+        );
     }
   }
 
@@ -204,6 +254,40 @@ class LayananApi {
       (data) => (data as List)
           .map((e) => Product.fromJson(e as Map<String, dynamic>))
           .toList(),
+    );
+  }
+
+  Future<ProdukPage> fetchProdukPaginated({
+    int page = 1,
+    int perPage = 10,
+    String? cari,
+    String? kategori,
+  }) {
+    final query = <String, String>{'page': '$page', 'per_page': '$perPage'};
+    if (cari != null && cari.isNotEmpty) query['cari'] = cari;
+    if (kategori != null && kategori.isNotEmpty) {
+      query['kategori'] = kategori;
+    }
+
+    return _requestResponse(
+      () => _client.get(
+        _uri('/produk', query),
+        headers: ApiConfig.defaultHeaders(),
+      ),
+      (response) {
+        final body = response.body!;
+        final products = (response.data as List)
+            .map((e) => Product.fromJson(e as Map<String, dynamic>))
+            .toList();
+        return ProdukPage(
+          products: products,
+          currentPage: body['current_page'] as int,
+          perPage: body['per_page'] as int,
+          total: body['total'] as int,
+          lastPage: body['last_page'] as int,
+          hasMorePages: body['has_more_pages'] as bool,
+        );
+      },
     );
   }
 
