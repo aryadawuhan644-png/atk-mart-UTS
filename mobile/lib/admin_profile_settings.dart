@@ -115,15 +115,6 @@ class _AdminProfileSettingsPageState extends State<AdminProfileSettingsPage> {
     }
   }
 
-  Future<void> _setNotifications(bool enabled) async {
-    try {
-      await AdminPreferences.setNotificationsEnabled(enabled);
-      if (mounted) setState(() {});
-    } catch (_) {
-      if (mounted) _showSaveError();
-    }
-  }
-
   void _showSaveError() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Pengaturan lokal gagal disimpan.')),
@@ -279,30 +270,6 @@ class _AdminProfileSettingsPageState extends State<AdminProfileSettingsPage> {
                       onSelectionChanged: (selection) =>
                           _setTheme(selection.first),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _SettingsSection(
-                  title: 'Notifikasi',
-                  icon: Icons.notifications_none_rounded,
-                  child: SwitchListTile.adaptive(
-                    contentPadding: EdgeInsets.zero,
-                    value: AdminPreferences.notificationsEnabled,
-                    onChanged: _setNotifications,
-                    title: const Text('Notifikasi aplikasi'),
-                    subtitle: const Text(
-                      'Pilihan ini disimpan di perangkat ini.',
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _SettingsSection(
-                  title: 'Informasi Aplikasi',
-                  icon: Icons.info_outline_rounded,
-                  child: const _SettingsInfoRow(
-                    icon: Icons.storefront_outlined,
-                    title: 'ATK Mart',
-                    value: 'Versi 1.0.0+1',
                   ),
                 ),
                 const SizedBox(height: 20),
