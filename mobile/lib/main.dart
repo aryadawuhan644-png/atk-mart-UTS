@@ -1824,8 +1824,6 @@ class _ProdukListPageState extends State<ProdukListPage> {
   }
 
   void _reload() {
-    PaintingBinding.instance.imageCache.clear();
-    PaintingBinding.instance.imageCache.clearLiveImages();
     if (mounted) {
       setState(() {
         _futureProduk = _fetchData();
@@ -2689,8 +2687,6 @@ class _ProdukDetailPageState extends State<ProdukDetailPage> {
   }
 
   void _reload() {
-    PaintingBinding.instance.imageCache.clear();
-    PaintingBinding.instance.imageCache.clearLiveImages();
     if (mounted) {
       setState(() {
         _futureDetail = _api.fetchProdukDetail(widget.produk.id);
@@ -7844,8 +7840,6 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
   }
 
   void _reload() {
-    PaintingBinding.instance.imageCache.clear();
-    PaintingBinding.instance.imageCache.clearLiveImages();
     if (mounted) {
       setState(() {
         _futureProduk = _api.fetchProduk();
@@ -7898,7 +7892,6 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
           behavior: SnackBarBehavior.floating,
         ),
       );
-      _reload();
     } on ConflictException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -7923,11 +7916,10 @@ class _KelolaProdukPageState extends State<KelolaProdukPage> {
   }
 
   Future<void> _bukaFormProduk({Product? produk}) async {
-    final hasil = await Navigator.push<bool>(
+    await Navigator.push<bool>(
       context,
       MaterialPageRoute(builder: (_) => FormProdukPage(produk: produk)),
     );
-    if (hasil == true) _reload();
   }
 
   @override
@@ -8292,16 +8284,40 @@ class _FormProdukPageState extends State<FormProdukPage> {
 
   bool get _isEditMode => widget.produk != null;
 
+  String get _selectedImageSizeLabel {
+    if (_selectedImageBytes == null) return '';
+    final bytes = _selectedImageBytes!.lengthInBytes;
+    if (bytes >= 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
+    }
+    return '${(bytes / 1024).round()} KB';
+  }
+
   Future<void> _pickImage() async {
     try {
       final picked = await _imagePicker.pickImage(
         source: ImageSource.gallery,
         maxWidth: 1920,
         maxHeight: 1920,
-        imageQuality: 85,
+        imageQuality: 80,
       );
       if (picked != null) {
         final bytes = await picked.readAsBytes();
+        if (bytes.lengthInBytes > 2 * 1024 * 1024) {
+          final sizeMb =
+              (bytes.lengthInBytes / (1024 * 1024)).toStringAsFixed(2);
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Ukuran foto ($sizeMb MB) melebihi batas maksimal 2 MB. Silakan pilih gambar lain.',
+              ),
+              backgroundColor: const Color(0xFFE14B4B),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
         setState(() {
           _selectedImageFile = picked;
           _selectedImageBytes = bytes;
@@ -8513,12 +8529,12 @@ class _FormProdukPageState extends State<FormProdukPage> {
           behavior: SnackBarBehavior.floating,
         ),
       );
-    } on RequestTimeoutException {
+    } on RequestTimeoutException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Koneksi timeout. Silakan coba lagi.'),
-          backgroundColor: Color(0xFFE14B4B),
+        SnackBar(
+          content: Text('Gagal menyimpan produk: ${e.message}'),
+          backgroundColor: const Color(0xFFE14B4B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -8802,7 +8818,7 @@ class _FormProdukPageState extends State<FormProdukPage> {
                     ),
                   ),
                   TextButton.icon(
-                    onPressed: _tambahTierGrosir,
+                    onPressed: _isSubmitting ? null : _tambahTierGrosir,
                     icon: const Icon(Icons.add, size: 16),
                     label: const Text('Tambah Tier'),
                   ),
@@ -8891,7 +8907,7 @@ class _FormProdukPageState extends State<FormProdukPage> {
                           color: Color(0xFFE14B4B),
                         ),
                         tooltip: 'Hapus tier ini',
-                        onPressed: () => _hapusTierGrosir(i),
+                        onPressed: _isSubmitting ? null : () => _hapusTierGrosir(i),
                       ),
                     ],
                   ),
@@ -8899,6 +8915,46 @@ class _FormProdukPageState extends State<FormProdukPage> {
               }),
 
               const SizedBox(height: 24),
+
+              // === Indikator Progres Simpan/Unggah ===
+              if (_isSubmitting) ...[
+                Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                  ),
+                  child: Row(
+                    children: [
+                      const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFF2563EB),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _selectedImageBytes != null
+                              ? 'Sedang mengunggah foto & menyimpan data produk (maks. 60 dtk)...'
+                              : 'Sedang menyimpan data produk...',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF1E40AF),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
 
               // === Tombol Submit ===
               SizedBox(
@@ -8914,13 +8970,28 @@ class _FormProdukPageState extends State<FormProdukPage> {
                   ),
                   onPressed: _isSubmitting ? null : _submit,
                   child: _isSubmitting
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
+                      ? Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              _isEditMode
+                                  ? 'Menyimpan Perubahan...'
+                                  : 'Menambahkan Produk...',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         )
                       : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -8993,9 +9064,11 @@ class _FormProdukPageState extends State<FormProdukPage> {
                             color: const Color(0xFF2E9E5B),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Text(
-                            'Gambar Baru Dipilih',
-                            style: TextStyle(
+                          child: Text(
+                            _selectedImageSizeLabel.isNotEmpty
+                                ? 'Gambar Baru ($_selectedImageSizeLabel)'
+                                : 'Gambar Baru Dipilih',
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
@@ -9165,15 +9238,16 @@ class _FormProdukPageState extends State<FormProdukPage> {
   }
 
   Widget _sectionCard({required Widget child}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE6E6EC), width: 0.8),
+        side: const BorderSide(color: Color(0xFFE6E6EC), width: 0.8),
       ),
-      child: child,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: child,
+      ),
     );
   }
 }

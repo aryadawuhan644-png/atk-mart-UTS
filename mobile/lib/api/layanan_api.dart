@@ -143,14 +143,17 @@ class LayananApi {
   /// Execute [fn], parse the Laravel envelope, return [data] via [parser].
   Future<T> _request<T>(
     Future<http.Response> Function() fn,
-    T Function(dynamic data) parser,
-  ) async {
+    T Function(dynamic data) parser, {
+    Duration? timeout,
+  }) async {
+    final effectiveTimeout = timeout ?? _timeout;
     http.Response response;
     try {
-      response = await fn().timeout(_timeout);
+      response = await fn().timeout(effectiveTimeout);
     } on TimeoutException {
-      throw const RequestTimeoutException(
-          'Permintaan ke server melebihi batas waktu (15 detik). Silakan coba lagi.');
+      final sec = effectiveTimeout.inSeconds;
+      throw RequestTimeoutException(
+          'Permintaan ke server melebihi batas waktu ($sec detik). Silakan coba lagi.');
     } catch (_) {
       throw const NetworkException(
           'Tidak dapat terhubung ke server ATK Mart. Periksa koneksi internet Anda.');
@@ -369,6 +372,7 @@ class LayananApi {
         return http.Response.fromStream(streamed);
       },
       (data) => Product.fromJson(data as Map<String, dynamic>),
+      timeout: const Duration(seconds: 60),
     );
   }
 

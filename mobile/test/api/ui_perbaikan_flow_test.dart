@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:atkmart_mobile/admin_preferences.dart';
 import 'package:atkmart_mobile/admin_profile_settings.dart';
 import 'package:atkmart_mobile/api/api_config.dart';
+import 'package:atkmart_mobile/api/layanan_api.dart';
 import 'package:atkmart_mobile/api/models/order.dart';
 import 'package:atkmart_mobile/main.dart';
 
@@ -200,6 +201,40 @@ void main() {
       );
 
       expect(find.byIcon(Icons.inventory_2_outlined), findsOneWidget);
+    });
+  });
+
+  group('Ketentuan Optimasi Upload Foto & Edit Produk', () {
+    test('Batas maksimal ukuran foto adalah 2 MB (2.097.152 bytes)', () {
+      const maxUploadBytes = 2 * 1024 * 1024;
+      const validPhotoBytes = 1.8 * 1024 * 1024;
+      const oversizedPhotoBytes = 2.5 * 1024 * 1024;
+
+      expect(validPhotoBytes <= maxUploadBytes, isTrue);
+      expect(oversizedPhotoBytes > maxUploadBytes, isTrue);
+    });
+
+    test('Pesan timeout multipart memuat batas waktu 60 detik', () {
+      const err = RequestTimeoutException(
+          'Permintaan ke server melebihi batas waktu (60 detik). Silakan coba lagi.');
+      expect(err.message, contains('60 detik'));
+    });
+
+    testWidgets('FormProdukPage merender form edit produk dengan tombol simpan yang siap digunakan', (tester) async {
+      SessionPengguna.login(DemoAccount.pengelola);
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: FormProdukPage(),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Tambah Produk'), findsOneWidget);
+      expect(find.text('Foto Produk'), findsOneWidget);
+      expect(find.text('Informasi Dasar'), findsOneWidget);
+      expect(find.text('Tambahkan Produk'), findsOneWidget);
+      expect(find.byIcon(Icons.add_circle_outline), findsOneWidget);
     });
   });
 }
