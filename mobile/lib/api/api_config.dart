@@ -4,6 +4,7 @@
 // dari assets/config/env.json (yang di-ignore oleh Git) untuk kemudahan development.
 
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -31,19 +32,25 @@ class ApiConfig {
   /// Inisialisasi konfigurasi lokal dari asset env.json jika tersedia.
   /// Dipanggil saat bootstrap aplikasi di main().
   static Future<void> initLocalConfig() async {
+    String jsonStr;
     try {
-      final jsonStr = await rootBundle.loadString('assets/config/env.json');
-      final Map<String, dynamic> data = jsonDecode(jsonStr);
-      _tokenPembeli = (data['token_pembeli'] as String?)?.trim() ?? '';
-      _tokenPengelola = (data['token_pengelola'] as String?)?.trim() ?? '';
-      _activeRole = (data['active_role'] as String?)?.trim() ?? 'pembeli';
-      final baseUrl = (data['api_base_url'] as String?)?.trim() ?? '';
-      if (baseUrl.isNotEmpty) {
-        _localBaseUrl = baseUrl;
-      }
-    } catch (_) {
-      // File env.json tidak tersedia (misal di CI/CD atau clean clone tanpa file lokal).
+      jsonStr = await rootBundle.loadString('assets/config/env.json');
+    } on FlutterError {
+      return;
     }
+
+    final decoded = jsonDecode(jsonStr);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException(
+        'assets/config/env.json harus berisi object JSON.',
+      );
+    }
+
+    _tokenPembeli = (decoded['token_pembeli'] as String?)?.trim() ?? '';
+    _tokenPengelola = (decoded['token_pengelola'] as String?)?.trim() ?? '';
+    _activeRole = (decoded['active_role'] as String?)?.trim() ?? 'pembeli';
+    final baseUrl = (decoded['api_base_url'] as String?)?.trim() ?? '';
+    if (baseUrl.isNotEmpty) _localBaseUrl = baseUrl;
   }
 
   /// Ubah role aktif secara dinamis ('pembeli' atau 'pengelola').
@@ -96,7 +103,7 @@ class ApiConfig {
   /// 1. Nilai dari --dart-define=API_BASE_URL
   /// 2. Nilai api_base_url dari assets/config/env.json
   /// 3. Default otomatis per-platform:
-  ///    - Chrome/Web: http://127.0.0.1:8000/api
+  ///    - Web: backend on the same host at port 8000
   ///    - Android Emulator: http://10.0.2.2:8000/api
   ///    - Windows/Desktop/lainnya: http://127.0.0.1:8000/api
   static String get baseUrl {
@@ -104,7 +111,13 @@ class ApiConfig {
     if (_localBaseUrl.isNotEmpty) return _localBaseUrl;
 
     if (kIsWeb) {
-      return 'http://127.0.0.1:8000/api';
+      final host = Uri.base.host.isEmpty ? '127.0.0.1' : Uri.base.host;
+      return Uri(
+        scheme: 'http',
+        host: host,
+        port: 8000,
+        path: '/api',
+      ).toString();
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:

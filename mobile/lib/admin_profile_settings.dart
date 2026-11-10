@@ -115,6 +115,15 @@ class _AdminProfileSettingsPageState extends State<AdminProfileSettingsPage> {
     }
   }
 
+  Future<void> _setNotifications(bool enabled) async {
+    try {
+      await AdminPreferences.setNotificationsEnabled(enabled);
+      if (mounted) setState(() {});
+    } catch (_) {
+      if (mounted) _showSaveError();
+    }
+  }
+
   void _showSaveError() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Pengaturan lokal gagal disimpan.')),
@@ -204,6 +213,20 @@ class _AdminProfileSettingsPageState extends State<AdminProfileSettingsPage> {
                         ],
                       ),
                       const SizedBox(height: 16),
+                      _SettingsSection(
+                        title: 'Notifikasi',
+                        icon: Icons.notifications_outlined,
+                        child: SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Aktifkan notifikasi'),
+                          subtitle: const Text(
+                            'Pengaturan ini hanya berlaku di perangkat ini.',
+                          ),
+                          value: AdminPreferences.notificationsEnabled,
+                          onChanged: _setNotifications,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                       SizedBox(
                         width: double.infinity,
                         child: OutlinedButton.icon(
@@ -217,9 +240,7 @@ class _AdminProfileSettingsPageState extends State<AdminProfileSettingsPage> {
                         alignment: Alignment.centerLeft,
                         child: Text(
                           'Nama dan foto profil hanya tersimpan di perangkat ini.',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
+                          style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: colors.onSurfaceVariant),
                         ),
                       ),
@@ -285,6 +306,14 @@ class _AdminProfileSettingsPageState extends State<AdminProfileSettingsPage> {
                         color: colors.error.withValues(alpha: .5),
                       ),
                     ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Center(
+                  child: Text(
+                    'Versi 1.0.0+1',
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: colors.onSurfaceVariant),
                   ),
                 ),
               ],

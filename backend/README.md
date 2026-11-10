@@ -7,6 +7,46 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## ATK Mart Aoen web onboarding
+
+The onboarding UI is a Vue 3 page rendered through Inertia.js. Its source is in
+`../frontend/src/Pages/Onboarding.vue`; the Laravel Inertia adapter and web route
+live in this project. From this directory, install frontend dependencies and
+create the application tables:
+
+```sh
+npm install
+php artisan migrate
+```
+
+Then run the Vite and Laravel servers in separate terminals:
+
+```sh
+npm run dev
+```
+
+```sh
+php artisan serve
+```
+
+For a production asset build, run `npm run build`. Sign-in uses a username and
+password only; Google and email-based sign-in are not available.
+
+The sign-in screen separates **Pembeli 1**, **Pembeli 2**, and **Admin /
+Penjual**. Each buyer has a separate server-side customer record and private
+shopping cart. The seller account can add, edit, and deactivate products from
+the admin dashboard. Public registration is limited to buyer accounts.
+
+To create or reset the three local demo accounts, run:
+
+```sh
+php artisan account:setup-demo --password="<choose-a-password>"
+```
+
+The command stores hashed passwords and creates separate cart identities for
+the buyers. The usernames are `pembeli1`, `pembeli2`, and `admin`; the password
+is the value supplied to the command.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

@@ -27,11 +27,15 @@ class ApiException implements Exception {
 }
 
 class NetworkException extends ApiException {
-  const NetworkException([super.message = 'Tidak dapat terhubung ke server ATK Mart. Periksa koneksi internet Anda.']);
+  const NetworkException([
+    super.message = 'Tidak dapat terhubung ke server ATK Mart Aoen. Periksa koneksi internet Anda.',
+  ]);
 }
 
 class RequestTimeoutException extends ApiException {
-  const RequestTimeoutException([super.message = 'Permintaan ke server melebihi batas waktu (15 detik). Silakan coba lagi.']);
+  const RequestTimeoutException([
+    super.message = 'Permintaan ke server melebihi batas waktu (15 detik). Silakan coba lagi.',
+  ]);
 }
 
 class ValidationException extends ApiException {
@@ -44,19 +48,30 @@ class ConflictException extends ApiException {
 }
 
 class UnauthorizedException extends ApiException {
-  const UnauthorizedException([super.message = 'Sesi tidak sah. Token autentikasi tidak valid atau belum diatur.']);
+  const UnauthorizedException([
+    super.message =
+        'Sesi tidak sah. Token autentikasi tidak valid atau belum diatur.',
+  ]);
 }
 
 class ForbiddenException extends ApiException {
-  const ForbiddenException([super.message = 'Akses ditolak: Anda tidak memiliki wewenang untuk tindakan ini.']);
+  const ForbiddenException([
+    super.message =
+        'Akses ditolak: Anda tidak memiliki wewenang untuk tindakan ini.',
+  ]);
 }
 
 class NotFoundException extends ApiException {
-  const NotFoundException([super.message = 'Data yang diminta tidak ditemukan di server (404).']);
+  const NotFoundException([
+    super.message = 'Data yang diminta tidak ditemukan di server (404).',
+  ]);
 }
 
 class ServerException extends ApiException {
-  const ServerException([super.message = 'Terjadi kendala pada server (500). Silakan coba beberapa saat lagi.']);
+  const ServerException([
+    super.message =
+        'Terjadi kendala pada server (500). Silakan coba beberapa saat lagi.',
+  ]);
 }
 
 class ProdukPage {
@@ -106,7 +121,9 @@ class _LaravelResponse {
         code: json['code']?.toString() ?? '$fallbackStatusCode',
         message: json['message'] as String? ?? '',
         data: json['data'],
-        errors: json['errors'] is Map ? (json['errors'] as Map).cast<String, dynamic>() : null,
+        errors: json['errors'] is Map
+            ? (json['errors'] as Map).cast<String, dynamic>()
+            : null,
         body: json,
       );
     } catch (_) {
@@ -116,8 +133,8 @@ class _LaravelResponse {
         message: fallbackStatusCode == 500
             ? 'Terjadi kendala pada server (500). Silakan coba beberapa saat lagi.'
             : (fallbackStatusCode == 404
-                ? 'Data yang diminta tidak ditemukan (404).'
-                : 'Respon dari server tidak valid.'),
+                  ? 'Data yang diminta tidak ditemukan (404).'
+                  : 'Respon dari server tidak valid.'),
         data: null,
         body: null,
       );
@@ -147,7 +164,7 @@ class LayananApi {
   http.Client get client => _client;
 
   LayananApi({http.Client? client})
-      : _client = client ?? _mockClient ?? http.Client();
+    : _client = client ?? _mockClient ?? http.Client();
 
   // --- Helpers ---------------------------------------------------------------
 
@@ -162,18 +179,16 @@ class LayananApi {
         : uri;
   }
 
-  
   /// Execute [fn], parse the Laravel envelope, return [data] via [parser].
   Future<T> _request<T>(
     Future<http.Response> Function() fn,
     T Function(dynamic data) parser, {
     Duration? timeout,
-  }) =>
-      _requestResponse(
-        fn,
-        (response) => parser(response.data),
-        timeout: timeout,
-      );
+  }) => _requestResponse(
+    fn,
+    (response) => parser(response.data),
+    timeout: timeout,
+  );
 
   Future<T> _requestResponse<T>(
     Future<http.Response> Function() fn,
@@ -192,7 +207,7 @@ class LayananApi {
       );
     } catch (_) {
       throw const NetworkException(
-        'Tidak dapat terhubung ke server ATK Mart. Periksa koneksi internet Anda.',
+        'Tidak dapat terhubung ke server ATK Mart Aoen. Periksa koneksi internet Anda.',
       );
     }
 
@@ -206,15 +221,11 @@ class LayananApi {
     switch (httpCode) {
       case 401:
         throw UnauthorizedException(
-          env.message.isNotEmpty
-              ? env.message
-              : 'Sesi tidak sah. Token autentikasi tidak valid atau belum diatur.',
+          env.message.isNotEmpty ? env.message : 'Sesi tidak sah. Token autentikasi tidak valid atau belum diatur.',
         );
       case 403:
         throw ForbiddenException(
-          env.message.isNotEmpty
-              ? env.message
-              : 'Akses ditolak: Anda tidak memiliki wewenang untuk tindakan ini.',
+          env.message.isNotEmpty ? env.message : 'Akses ditolak: Anda tidak memiliki wewenang untuk tindakan ini.',
         );
       case 404:
         throw NotFoundException(
@@ -250,7 +261,9 @@ class LayananApi {
 
     return _request(
       () => _client.get(
-          _uri('/produk', query), headers: ApiConfig.defaultHeaders()),
+        _uri('/produk', query),
+        headers: ApiConfig.defaultHeaders(),
+      ),
       (data) => (data as List)
           .map((e) => Product.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -295,10 +308,9 @@ class LayananApi {
   // 2. GET /produk/{id}
   // ---------------------------------------------------------------------------
   Future<Product> fetchProdukDetail(int id) => _request(
-        () => _client.get(
-            _uri('/produk/$id'), headers: ApiConfig.defaultHeaders()),
-        (data) => Product.fromJson(data as Map<String, dynamic>),
-      );
+    () => _client.get(_uri('/produk/$id'), headers: ApiConfig.defaultHeaders()),
+    (data) => Product.fromJson(data as Map<String, dynamic>),
+  );
 
   // ---------------------------------------------------------------------------
   // 3. POST /produk (pengelola only)
@@ -406,12 +418,12 @@ class LayananApi {
               final minKuantitas = tier['min_kuantitas'];
               final hargaSatuan = tier['harga_satuan'];
               if (minKuantitas != null) {
-                request.fields['harga_grosir[$i][min_kuantitas]'] =
-                    minKuantitas.toString();
+                request.fields['harga_grosir[$i][min_kuantitas]'] = minKuantitas
+                    .toString();
               }
               if (hargaSatuan != null) {
-                request.fields['harga_grosir[$i][harga_satuan]'] =
-                    hargaSatuan.toString();
+                request.fields['harga_grosir[$i][harga_satuan]'] = hargaSatuan
+                    .toString();
               }
             }
           }
@@ -432,21 +444,13 @@ class LayananApi {
           ? gambarNama
           : 'produk.jpg';
       request.files.add(
-        http.MultipartFile.fromBytes(
-          'gambar',
-          gambarBytes,
-          filename: name,
-        ),
+        http.MultipartFile.fromBytes('gambar', gambarBytes, filename: name),
       );
     } else if (gambarFile != null) {
       final bytes = await gambarFile.readAsBytes();
       final name = gambarFile.name.isNotEmpty ? gambarFile.name : 'produk.jpg';
       request.files.add(
-        http.MultipartFile.fromBytes(
-          'gambar',
-          bytes,
-          filename: name,
-        ),
+        http.MultipartFile.fromBytes('gambar', bytes, filename: name),
       );
     }
 
@@ -465,10 +469,12 @@ class LayananApi {
   // Returns 200 on success; 409 if product has active orders.
   // ---------------------------------------------------------------------------
   Future<void> deleteProduk(int id) => _request<void>(
-        () => _client.delete(
-            _uri('/produk/$id'), headers: ApiConfig.pengelolaHeaders()),
-        (_) {},
-      );
+    () => _client.delete(
+      _uri('/produk/$id'),
+      headers: ApiConfig.pengelolaHeaders(),
+    ),
+    (_) {},
+  );
 
   // ---------------------------------------------------------------------------
   // 6. GET /kurir
@@ -476,34 +482,40 @@ class LayananApi {
   // With ?wilayah_id=X: data = {wilayah:{...}, kurir:[{kurir_id,nama,deskripsi,tarif}]}
   // ---------------------------------------------------------------------------
   Future<KurirData> fetchKurir() => _request(
-        () => _client.get(
-            _uri('/kurir'), headers: ApiConfig.defaultHeaders()),
-        (data) => KurirData.fromJson(data as Map<String, dynamic>),
-      );
+    () => _client.get(_uri('/kurir'), headers: ApiConfig.defaultHeaders()),
+    (data) => KurirData.fromJson(data as Map<String, dynamic>),
+  );
 
   Future<KurirByWilayahData> fetchKurirByWilayah(int wilayahId) => _request(
-        () => _client.get(
-          _uri('/kurir', {'wilayah_id': wilayahId.toString()}),
-          headers: ApiConfig.defaultHeaders(),
-        ),
-        (data) => KurirByWilayahData.fromJson(data as Map<String, dynamic>),
-      );
+    () => _client.get(
+      _uri('/kurir', {'wilayah_id': wilayahId.toString()}),
+      headers: ApiConfig.defaultHeaders(),
+    ),
+    (data) => KurirByWilayahData.fromJson(data as Map<String, dynamic>),
+  );
 
   // ---------------------------------------------------------------------------
   // 7. GET /keranjang (pembeli only)
   // Response: data = {items:[], subtotal:int, ongkos_kirim?:int, total?:int}
   // Mendukung parameter opsional kurir_id, wilayah_id, dan item_ids untuk kalkulasi tarif server
   // ---------------------------------------------------------------------------
-  Future<KeranjangData> fetchKeranjang({int? kurirId, int? wilayahId, List<int>? itemIds}) {
+  Future<KeranjangData> fetchKeranjang({
+    int? kurirId,
+    int? wilayahId,
+    List<int>? itemIds,
+  }) {
     final query = <String, String>{};
     if (kurirId != null) query['kurir_id'] = kurirId.toString();
     if (wilayahId != null) query['wilayah_id'] = wilayahId.toString();
-    if (itemIds != null && itemIds.isNotEmpty) query['item_ids'] = itemIds.join(',');
+    if (itemIds != null && itemIds.isNotEmpty) {
+      query['item_ids'] = itemIds.join(',');
+    }
 
     return _request(
       () => _client.get(
-          _uri('/keranjang', query.isNotEmpty ? query : null),
-          headers: ApiConfig.defaultHeaders()),
+        _uri('/keranjang', query.isNotEmpty ? query : null),
+        headers: ApiConfig.defaultHeaders(),
+      ),
       (data) => KeranjangData.fromJson(data as Map<String, dynamic>),
     );
   }
@@ -540,10 +552,12 @@ class LayananApi {
   // 10. DELETE /keranjang/{id} (pembeli only)
   // ---------------------------------------------------------------------------
   Future<void> deleteKeranjang(int id) => _request<void>(
-        () => _client.delete(
-            _uri('/keranjang/$id'), headers: ApiConfig.defaultHeaders()),
-        (_) {},
-      );
+    () => _client.delete(
+      _uri('/keranjang/$id'),
+      headers: ApiConfig.defaultHeaders(),
+    ),
+    (_) {},
+  );
 
   // ---------------------------------------------------------------------------
   // 11. POST /checkout (pembeli only)
@@ -556,54 +570,54 @@ class LayananApi {
   Future<Order> checkout({
     required CheckoutRequest request,
     required String idempotencyKey,
-  }) =>
-      _request(
-        () => _client.post(
-          _uri('/checkout'),
-          headers: ApiConfig.defaultHeaders(
-              extra: {'X-Kunci-Idempoten': idempotencyKey}),
-          body: jsonEncode(request.toJson()),
-        ),
-        (data) => Order.fromJson(data as Map<String, dynamic>),
-      );
+  }) => _request(
+    () => _client.post(
+      _uri('/checkout'),
+      headers: ApiConfig.defaultHeaders(
+        extra: {'X-Kunci-Idempoten': idempotencyKey},
+      ),
+      body: jsonEncode(request.toJson()),
+    ),
+    (data) => Order.fromJson(data as Map<String, dynamic>),
+  );
 
   // ---------------------------------------------------------------------------
   // 12. GET /pesanan
   // Response: data is List of formatPesananSummary objects.
   // ---------------------------------------------------------------------------
   Future<List<Order>> fetchPesanan() => _request(
-        () => _client.get(
-            _uri('/pesanan'), headers: ApiConfig.defaultHeaders()),
-        (data) => (data as List)
-            .map((e) => Order.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    () => _client.get(_uri('/pesanan'), headers: ApiConfig.defaultHeaders()),
+    (data) => (data as List)
+        .map((e) => Order.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 
   /// 12b. GET /pesanan (pengelola - melihat seluruh pesanan pelanggan)
   Future<List<Order>> fetchPesananPengelola() => _request(
-        () => _client.get(
-            _uri('/pesanan'), headers: ApiConfig.pengelolaHeaders()),
-        (data) => (data as List)
-            .map((e) => Order.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    () => _client.get(_uri('/pesanan'), headers: ApiConfig.pengelolaHeaders()),
+    (data) => (data as List)
+        .map((e) => Order.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 
   // ---------------------------------------------------------------------------
   // 13. GET /pesanan/{id}
   // Response: data = formatPesananDetail (includes items & riwayat_status).
   // ---------------------------------------------------------------------------
   Future<Order> fetchPesananDetail(int id) => _request(
-        () => _client.get(
-            _uri('/pesanan/$id'), headers: ApiConfig.defaultHeaders()),
-        (data) => Order.fromJson(data as Map<String, dynamic>),
-      );
+    () =>
+        _client.get(_uri('/pesanan/$id'), headers: ApiConfig.defaultHeaders()),
+    (data) => Order.fromJson(data as Map<String, dynamic>),
+  );
 
   /// 13b. GET /pesanan/{id} (pengelola)
   Future<Order> fetchPesananDetailPengelola(int id) => _request(
-        () => _client.get(
-            _uri('/pesanan/$id'), headers: ApiConfig.pengelolaHeaders()),
-        (data) => Order.fromJson(data as Map<String, dynamic>),
-      );
+    () => _client.get(
+      _uri('/pesanan/$id'),
+      headers: ApiConfig.pengelolaHeaders(),
+    ),
+    (data) => Order.fromJson(data as Map<String, dynamic>),
+  );
 
   // ---------------------------------------------------------------------------
   // 14. PATCH /pesanan/{id}/status
@@ -614,34 +628,26 @@ class LayananApi {
     required int id,
     required String status,
     String? catatan,
-  }) =>
-      _request(
-        () => _client.patch(
-          _uri('/pesanan/$id/status'),
-          headers: ApiConfig.defaultHeaders(),
-          body: jsonEncode({
-            'status': status,
-            'catatan': ?catatan,
-          }),
-        ),
-        (data) => Order.fromJson(data as Map<String, dynamic>),
-      );
+  }) => _request(
+    () => _client.patch(
+      _uri('/pesanan/$id/status'),
+      headers: ApiConfig.defaultHeaders(),
+      body: jsonEncode({'status': status, 'catatan': ?catatan}),
+    ),
+    (data) => Order.fromJson(data as Map<String, dynamic>),
+  );
 
   /// 14b. PATCH /pesanan/{id}/status (pengelola - konfirmasi pembayaran & status lain)
   Future<Order> updateStatusPesananPengelola({
     required int id,
     required String status,
     String? catatan,
-  }) =>
-      _request(
-        () => _client.patch(
-          _uri('/pesanan/$id/status'),
-          headers: ApiConfig.pengelolaHeaders(),
-          body: jsonEncode({
-            'status': status,
-            'catatan': ?catatan,
-          }),
-        ),
-        (data) => Order.fromJson(data as Map<String, dynamic>),
-      );
+  }) => _request(
+    () => _client.patch(
+      _uri('/pesanan/$id/status'),
+      headers: ApiConfig.pengelolaHeaders(),
+      body: jsonEncode({'status': status, 'catatan': ?catatan}),
+    ),
+    (data) => Order.fromJson(data as Map<String, dynamic>),
+  );
 }

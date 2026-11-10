@@ -86,13 +86,15 @@ void main() {
       expect(find.text('admin@atkmart.id'), findsOneWidget);
       expect(find.text('Ganti Password'), findsOneWidget);
 
-      await tester.ensureVisible(find.text('Gelap'));
+      await tester.scrollUntilVisible(find.text('Gelap'), 300);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Gelap'));
       await tester.pumpAndSettle();
       expect(AdminPreferences.themeMode.value, ThemeMode.dark);
 
       await tester.scrollUntilVisible(find.byType(SwitchListTile), 300);
+      await tester.ensureVisible(find.byType(SwitchListTile));
+      await tester.pumpAndSettle();
       await tester.tap(find.byType(SwitchListTile));
       await tester.pumpAndSettle();
       expect(AdminPreferences.notificationsEnabled, isFalse);

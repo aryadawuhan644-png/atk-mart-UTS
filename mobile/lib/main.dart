@@ -19,6 +19,7 @@ import 'api/models/kurir.dart';
 import 'api/models/order.dart';
 import 'api/models/product.dart';
 import 'core/motion.dart';
+import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -596,29 +597,7 @@ class AtkMartApp extends StatelessWidget {
       builder: (context, themeMode, _) => MaterialApp(
         title: 'ATK Mart',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF2563EB),
-            primary: const Color(0xFF2563EB),
-            secondary: const Color(0xFF172554),
-            surface: Colors.white,
-          ),
-          useMaterial3: true,
-          scaffoldBackgroundColor: const Color(0xFFF1F5F9),
-          appBarTheme: const AppBarTheme(
-            backgroundColor: Color(0xFF172554),
-            foregroundColor: Colors.white,
-            elevation: 0,
-            centerTitle: false,
-            iconTheme: IconThemeData(color: Colors.white),
-            titleTextStyle: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.3,
-            ),
-          ),
-        ),
+        theme: AppTheme.light,
         darkTheme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
             seedColor: const Color(0xFF60A5FA),
@@ -637,8 +616,8 @@ class AtkMartApp extends StatelessWidget {
         themeMode: themeMode,
         home: SessionPengguna.isLoggedIn
             ? (SessionPengguna.isPengelola
-                ? const AdminDashboardPage()
-                : const PembeliShellPage())
+                  ? const AdminDashboardPage()
+                  : const PembeliShellPage())
             : const LoginDemoPage(),
       ),
     );
@@ -1063,10 +1042,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                       const SizedBox(height: 6),
                       Text(
                         subtitle,
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          height: 1.35,
-                        ),
+                        style: const TextStyle(fontSize: 12.5, height: 1.35),
                       ),
                     ],
                   ),
@@ -1094,7 +1070,7 @@ String _formatRupiah(int nominal) {
 // ---------------------------------------------------------------------------
 String formatAppErrorMessage(Object error) {
   if (error is NetworkException) {
-    return 'Gagal terhubung ke server ATK Mart.\nPastikan backend Laravel berjalan dan koneksi internet aktif.';
+    return 'Gagal terhubung ke server ATK Mart Aoen.\nPastikan backend Laravel berjalan dan koneksi internet aktif.';
   }
   if (error is RequestTimeoutException) {
     return 'Permintaan ke server melebihi batas waktu (15 detik). Silakan coba lagi.';
@@ -3952,7 +3928,7 @@ class _KeranjangPageState extends State<KeranjangPage> {
                           : DismissDirection.endToStart,
                       confirmDismiss: (_) => _confirmDeleteItem(item),
                       onDismissed: (_) => _reload(),
-                        background: const SizedBox.shrink(),
+                      background: const SizedBox.shrink(),
                       secondaryBackground: Container(
                         alignment: Alignment.centerRight,
                         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -8337,8 +8313,9 @@ class _FormProdukPageState extends State<FormProdukPage> {
       if (picked != null) {
         final bytes = await picked.readAsBytes();
         if (bytes.lengthInBytes > 2 * 1024 * 1024) {
-          final sizeMb =
-              (bytes.lengthInBytes / (1024 * 1024)).toStringAsFixed(2);
+          final sizeMb = (bytes.lengthInBytes / (1024 * 1024)).toStringAsFixed(
+            2,
+          );
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -8940,7 +8917,9 @@ class _FormProdukPageState extends State<FormProdukPage> {
                           color: Color(0xFFE14B4B),
                         ),
                         tooltip: 'Hapus tier ini',
-                        onPressed: _isSubmitting ? null : () => _hapusTierGrosir(i),
+                        onPressed: _isSubmitting
+                            ? null
+                            : () => _hapusTierGrosir(i),
                       ),
                     ],
                   ),
@@ -8953,8 +8932,10 @@ class _FormProdukPageState extends State<FormProdukPage> {
               if (_isSubmitting) ...[
                 Container(
                   width: double.infinity,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFEFF6FF),
                     borderRadius: BorderRadius.circular(10),
@@ -9277,10 +9258,7 @@ class _FormProdukPageState extends State<FormProdukPage> {
         borderRadius: BorderRadius.circular(12),
         side: const BorderSide(color: Color(0xFFE6E6EC), width: 0.8),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: child,
-      ),
+      child: Padding(padding: const EdgeInsets.all(16), child: child),
     );
   }
 }

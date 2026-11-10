@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.atkmart" "\0"
-            VALUE "FileDescription", "atkmart_mobile" "\0"
+            VALUE "FileDescription", "ATK Mart Aoen" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "atkmart_mobile" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.atkmart. All rights reserved." "\0"
             VALUE "OriginalFilename", "atkmart_mobile.exe" "\0"
-            VALUE "ProductName", "atkmart_mobile" "\0"
+            VALUE "ProductName", "ATK Mart Aoen" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

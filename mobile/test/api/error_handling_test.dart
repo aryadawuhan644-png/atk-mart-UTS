@@ -22,7 +22,7 @@ void main() {
     test('Offline / NetworkException menghasilkan pesan ramah tanpa exception mentah', () {
       const err = NetworkException();
       final msg = formatAppErrorMessage(err);
-      expect(msg, contains('Gagal terhubung ke server ATK Mart'));
+      expect(msg, contains('Gagal terhubung ke server ATK Mart Aoen'));
       expect(msg, isNot(contains('SocketException')));
       expect(msg, isNot(contains('ClientException')));
       expect(msg, isNot(contains('Exception:')));
