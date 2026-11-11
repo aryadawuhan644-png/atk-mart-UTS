@@ -23,14 +23,14 @@ Proyek ini disusun sebagai Tugas Pengganti UTS mata kuliah Pemrograman Aplikasi 
 
 **Nama Kelompok:** Kelompok 6
 
-| No | Nama Lengkap | NIM | Peran |
+| No | Nama Lengkap | NIM |
 |---|---|---|---|
-| 1 | Khatarina Lusia Ose | 24102033 | [isi peran] |
-| 2 | Arya Anugrah Saputra | 24102027 | [isi peran] |
-| 3 | Veronica Ananda Eka Cristya | 24102021 | [isi peran] |
-| 4 | Anggun Tri Pratiwi | 24102026 | [isi peran] |
-| 5 | Dewi Nafiatul Khusnaini | 24102031 | [isi peran] |
-| 6 | Salma Nurul Aliyah | 24102036 | [isi peran] |
+| 1 | Khatarina Lusia Ose | 24102033 |
+| 2 | Arya Anugrah Saputra | 24102027 | 
+| 3 | Veronica Ananda Eka Cristya | 24102021 | 
+| 4 | Anggun Tri Pratiwi | 24102026 | 
+| 5 | Dewi Nafiatul Khusnaini | 24102031 | 
+| 6 | Salma Nurul Aliyah | 24102036 |
 
 ## 2. Domain Bisnis dan Aturan Bisnis Khas
 
